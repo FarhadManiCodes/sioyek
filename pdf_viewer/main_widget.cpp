@@ -11417,7 +11417,7 @@ QMenuBar* MainWidget::create_main_menu_bar(){
     };
 
     MenuNode* navigate_menu = new MenuNode{
-        "Naviagte",
+        "Navigate",
         "",
         {
             new MenuNode{ "goto_page_with_page_number", "", {} },
