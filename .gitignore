@@ -395,3 +395,6 @@ flake*
 # ctags
 tags
 .vscode
+
+# Custom local build (CMake)
+/build-cmake/
