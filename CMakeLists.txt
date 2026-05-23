@@ -155,7 +155,6 @@ add_library(fzf STATIC
 
 target_link_libraries(sioyek PRIVATE
     ${CMAKE_DL_LIBS}
-    mupdf
     ${HARFBUZZ_LIBRARIES}
     ZLIB::ZLIB
     fzf
@@ -163,11 +162,6 @@ target_link_libraries(sioyek PRIVATE
 )
 
 if(APPLE)
-  # target_link_libraries(sioyek PRIVATE
-  #       "-framework AppKit"
-  #       mupdf-third
-  #       mupdf-threads
-  # )
   target_link_libraries(sioyek PRIVATE
       "-framework AppKit"
       -ldl
@@ -179,6 +173,14 @@ if(APPLE)
   )
 else()
   string(REPLACE "-mno-direct-extern-access" "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
+  target_link_libraries(sioyek PRIVATE
+      -L${CMAKE_CURRENT_SOURCE_DIR}/mupdf/build/release
+      -lmupdf
+      -lmupdf-third
+      -lmupdf-threads
+      -lharfbuzz
+      -lfreetype
+  )
 endif()
 
 install(TARGETS sioyek
