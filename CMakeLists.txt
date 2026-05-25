@@ -128,11 +128,12 @@ if(WIN32)
   endif()
 endif()
 
-if(UNIX AND NOT APPLE)
-  target_compile_definitions(sioyek PRIVATE
-        LINUX_STANDARD_PATHS
-  )
-endif()
+# Note: upstream CMakeLists.txt defines LINUX_STANDARD_PATHS unconditionally on
+# Linux, which forces sioyek to look at /etc/sioyek and /usr/share/sioyek for
+# defaults instead of files next to the binary. That makes the CMake build
+# incompatible with portable layouts. The qmake build's "linux_app_image"
+# config omits this define for the same reason. We omit it here too so this
+# build can run from ~/.local/share/sioyek/ without a system install.
 
 find_package(ZLIB REQUIRED)
 find_package(HarfBuzz REQUIRED)
