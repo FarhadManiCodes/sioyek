@@ -4282,6 +4282,7 @@ QString get_status_font_face_name() {
 }
 
 
+#ifndef SIOYEK_NO_TTS
 QtTextToSpeechHandler::QtTextToSpeechHandler() {
     tts = new QTextToSpeech();
 }
@@ -4347,6 +4348,7 @@ void QtTextToSpeechHandler::set_on_app_pause_callback(std::function<QString()>){
 void QtTextToSpeechHandler::set_on_app_resume_callback(std::function<void(bool, bool, int)>){
 
 }
+#endif
 
 QString translate_key_mapping_to_macos(QString mapping){
 

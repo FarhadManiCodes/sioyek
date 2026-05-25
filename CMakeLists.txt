@@ -6,21 +6,26 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
+option(SIOYEK_NO_TTS "Build without Qt TextToSpeech (no read-aloud)" OFF)
+
 # Qt Stuff
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 set(CMAKE_AUTOUIC ON)
 
+set(_sioyek_qt_components Core Gui Widgets Network OpenGL QuickWidgets Svg)
+if(NOT SIOYEK_NO_TTS)
+  list(APPEND _sioyek_qt_components TextToSpeech)
+endif()
+
 find_package(QT NAMES Qt6 Qt5 REQUIRED COMPONENTS Core)
 if(QT_VERSION_MAJOR GREATER_EQUAL 6)
   find_package(Qt6 REQUIRED COMPONENTS
-        Core Gui Widgets Network OpenGL QuickWidgets
-        Svg TextToSpeech OpenGLWidgets
+        ${_sioyek_qt_components} OpenGLWidgets
   )
 else()
   find_package(Qt5 REQUIRED COMPONENTS
-        Core Gui Widgets Network OpenGL QuickWidgets
-        Svg TextToSpeech OpenGLExtensions
+        ${_sioyek_qt_components} OpenGLExtensions
   )
 endif()
 
@@ -101,9 +106,14 @@ target_link_libraries(sioyek PRIVATE
     Qt::OpenGL
     Qt::QuickWidgets
     Qt::Svg
-    Qt::TextToSpeech
     Qt::Widgets
 )
+
+if(NOT SIOYEK_NO_TTS)
+  target_link_libraries(sioyek PRIVATE Qt::TextToSpeech)
+else()
+  target_compile_definitions(sioyek PRIVATE SIOYEK_NO_TTS)
+endif()
 
 if(NOT ANDROID)
   target_sources(sioyek PUBLIC

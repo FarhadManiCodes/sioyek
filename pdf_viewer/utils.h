@@ -18,7 +18,9 @@
 #include <qstandarditemmodel.h>
 #include <qpoint.h>
 #include <qjsonarray.h>
+#ifndef SIOYEK_NO_TTS
 #include <qtexttospeech.h>
+#endif
 
 #include <mupdf/fitz.h>
 
@@ -462,6 +464,7 @@ public:
     virtual void set_on_app_resume_callback(std::function<void(bool, bool, int)>) = 0;
 };
 
+#ifndef SIOYEK_NO_TTS
 class QtTextToSpeechHandler : public TextToSpeechHandler {
 public:
     QTextToSpeech* tts;
@@ -491,6 +494,22 @@ public:
     virtual void set_on_app_pause_callback(std::function<QString()>);
     virtual void set_on_app_resume_callback(std::function<void(bool, bool, int)>);
 };
+#else
+class NoOpTextToSpeechHandler : public TextToSpeechHandler {
+public:
+    void set_rate(float) override {}
+    void say(QString) override {}
+    void stop() override {}
+    void pause() override {}
+    bool is_pausable() override { return false; }
+    bool is_word_by_word() override { return false; }
+    void set_word_callback(std::function<void(int, int)>) override {}
+    void set_state_change_callback(std::function<void(QString)>) override {}
+    void set_external_state_change_callback(std::function<void(QString)>) override {}
+    void set_on_app_pause_callback(std::function<QString()>) override {}
+    void set_on_app_resume_callback(std::function<void(bool, bool, int)>) override {}
+};
+#endif
 
 
 #ifdef SIOYEK_ANDROID

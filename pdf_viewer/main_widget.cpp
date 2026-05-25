@@ -61,7 +61,9 @@
 #include <qlocalsocket.h>
 #include <qbytearray.h>
 #include <qscrollbar.h>
+#ifndef SIOYEK_NO_TTS
 #include <qtexttospeech.h>
+#endif
 #include <qwidget.h>
 #include <qjsengine.h>
 #include <qqmlengine.h>
@@ -8746,6 +8748,8 @@ TextToSpeechHandler* MainWidget::get_tts() {
 
 #ifdef SIOYEK_ANDROID
     tts = new AndroidTextToSpeechHandler();
+#elif defined(SIOYEK_NO_TTS)
+    tts = new NoOpTextToSpeechHandler();
 #else
     tts = new QtTextToSpeechHandler();
 #endif
