@@ -169,7 +169,7 @@ target_link_libraries(sioyek PRIVATE
     ${HARFBUZZ_LIBRARIES}
     ZLIB::ZLIB
     fzf
-    SQLite::SQLite3
+    SQLite3::SQLite3
 )
 
 if(APPLE)
