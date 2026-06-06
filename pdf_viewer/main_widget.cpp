@@ -122,6 +122,7 @@ extern std::wstring PAPER_SEARCH_CONTRIB_PATH;
 extern bool FUZZY_SEARCHING;
 extern bool AUTO_RENAME_DOWNLOADED_PAPERS;
 extern bool SHOW_STATUSBAR_ONLY_WHEN_MOUSE_OVER;
+extern bool HIGHLIGHT_LINK_DESTINATION;
 
 extern float TEXT_SELECTION_MINIMUM_DISTANCE;
 extern float VISUAL_MARK_NEXT_PAGE_FRACTION;
@@ -4752,7 +4753,7 @@ void MainWidget::handle_link_click(const PdfLink& link) {
         goto_page_with_page_number(page);
     }
     else {
-        handle_goto_link_with_page_and_offset(page, offset_y);
+        handle_goto_link_with_page_and_offset(page, offset_y, offset_x);
     }
 }
 
@@ -6493,7 +6494,7 @@ void MainWidget::handle_open_link(const std::wstring& text, bool copy) {
                     goto_page_with_page_number(page - 1);
                 }
                 else {
-                    handle_goto_link_with_page_and_offset(page - 1, offset_y);
+                    handle_goto_link_with_page_and_offset(page - 1, offset_y, offset_x);
                 }
             }
         }
@@ -11031,7 +11032,35 @@ void MainWidget::clear_keyboard_select_highlights() {
     opengl_widget->set_should_highlight_words(false);
 }
 
-void MainWidget::handle_goto_link_with_page_and_offset(int page, float y_offset) {
+void MainWidget::highlight_link_destination(int page, float y_offset, float x_offset){
+    DocumentPos top_left {
+        .page = page,
+        .x = x_offset - 10,
+        .y = y_offset - 10
+    };
+
+    DocumentPos bottom_right {
+        .page = page,
+        .x = x_offset + 10,
+        .y = y_offset + 10
+    };
+
+    DocumentRect link_rect = DocumentRect(top_left, bottom_right, page);
+
+    std::optional<AbsoluteRect> link_destination_rect = get_page_intersecting_rect(link_rect);
+    if (link_destination_rect) {
+        DocumentRect dest_rect = link_destination_rect.value().to_document(doc());
+
+        opengl_widget->set_synctex_highlights({ dest_rect });
+    }
+}
+
+void MainWidget::handle_goto_link_with_page_and_offset(int page, float y_offset, float x_offset) {
+
+    if (HIGHLIGHT_LINK_DESTINATION){
+        highlight_link_destination(page, y_offset, x_offset);
+    }
+
     long_jump_to_destination(page, y_offset);
     if (ALIGN_LINK_DEST_TO_TOP) {
         float top_offset = (main_document_view->get_view_height() / main_document_view->get_zoom_level()) / 2.0f;
