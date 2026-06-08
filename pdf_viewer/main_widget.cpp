@@ -5127,7 +5127,23 @@ int MainWidget::get_page_intersecting_rect_index(DocumentRect r) {
         }
     }
     if (selected_index == -1) {
-        return line_rects.size() - 1;
+        // No line overlaps the rect horizontally (e.g. a link destination whose x is
+        // only a page margin, left of the text). Fall back to the topmost line whose
+        // center is at or below the rect's center, rather than snapping to the last
+        // line on the page. This matches a destination's "scroll the anchor to the
+        // top" semantics. Existing callers (synctex, focus_rect) pass rects that
+        // overlap a line, so they take the area path above and never reach this.
+        float anchor_y = (abs_rect.y0 + abs_rect.y1) / 2.0f;
+        for (int i = 0; i < (int)line_rects.size(); i++) {
+            float center_y = (line_rects[i].y0 + line_rects[i].y1) / 2.0f;
+            if (center_y < anchor_y) {
+                continue;
+            }
+            if ((selected_index == -1) ||
+                (center_y < (line_rects[selected_index].y0 + line_rects[selected_index].y1) / 2.0f)) {
+                selected_index = i;
+            }
+        }
     }
     return selected_index;
 }
@@ -11033,16 +11049,18 @@ void MainWidget::clear_keyboard_select_highlights() {
 }
 
 void MainWidget::highlight_link_destination(int page, float y_offset, float x_offset){
+    const int LINK_TARGET_SIZE = 10;
+
     DocumentPos top_left {
         .page = page,
-        .x = x_offset - 10,
-        .y = y_offset - 10
+        .x = x_offset - LINK_TARGET_SIZE,
+        .y = y_offset - LINK_TARGET_SIZE
     };
 
     DocumentPos bottom_right {
         .page = page,
-        .x = x_offset + 10,
-        .y = y_offset + 10
+        .x = x_offset + LINK_TARGET_SIZE,
+        .y = y_offset + LINK_TARGET_SIZE
     };
 
     DocumentRect link_rect = DocumentRect(top_left, bottom_right, page);
