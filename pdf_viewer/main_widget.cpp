@@ -124,6 +124,7 @@ extern std::wstring PAPER_SEARCH_CONTRIB_PATH;
 extern bool FUZZY_SEARCHING;
 extern bool AUTO_RENAME_DOWNLOADED_PAPERS;
 extern bool SHOW_STATUSBAR_ONLY_WHEN_MOUSE_OVER;
+extern bool HIGHLIGHT_LINK_DESTINATION;
 
 extern float TEXT_SELECTION_MINIMUM_DISTANCE;
 extern float VISUAL_MARK_NEXT_PAGE_FRACTION;
@@ -4754,7 +4755,7 @@ void MainWidget::handle_link_click(const PdfLink& link) {
         goto_page_with_page_number(page);
     }
     else {
-        handle_goto_link_with_page_and_offset(page, offset_y);
+        handle_goto_link_with_page_and_offset(page, offset_y, offset_x);
     }
 }
 
@@ -5128,7 +5129,23 @@ int MainWidget::get_page_intersecting_rect_index(DocumentRect r) {
         }
     }
     if (selected_index == -1) {
-        return line_rects.size() - 1;
+        // No line overlaps the rect horizontally (e.g. a link destination whose x is
+        // only a page margin, left of the text). Fall back to the topmost line whose
+        // center is at or below the rect's center, rather than snapping to the last
+        // line on the page. This matches a destination's "scroll the anchor to the
+        // top" semantics. Existing callers (synctex, focus_rect) pass rects that
+        // overlap a line, so they take the area path above and never reach this.
+        float anchor_y = (abs_rect.y0 + abs_rect.y1) / 2.0f;
+        for (int i = 0; i < (int)line_rects.size(); i++) {
+            float center_y = (line_rects[i].y0 + line_rects[i].y1) / 2.0f;
+            if (center_y < anchor_y) {
+                continue;
+            }
+            if ((selected_index == -1) ||
+                (center_y < (line_rects[selected_index].y0 + line_rects[selected_index].y1) / 2.0f)) {
+                selected_index = i;
+            }
+        }
     }
     return selected_index;
 }
@@ -5716,6 +5733,11 @@ void MainWidget::advance_command(std::unique_ptr<Command> new_command, std::wstr
             Requirement next_requirement = pending_command_instance->next_requirement(this).value();
             if (next_requirement.type == RequirementType::Text) {
                 show_textbar(utf8_decode(next_requirement.name), pending_command_instance->get_text_default_value());
+                text_command_line_edit->setEchoMode(QLineEdit::EchoMode::Normal);
+            }
+            else if (next_requirement.type == RequirementType::Password) {
+                show_textbar(utf8_decode(next_requirement.name), pending_command_instance->get_text_default_value());
+                text_command_line_edit->setEchoMode(QLineEdit::EchoMode::Password);
             }
             else if (next_requirement.type == RequirementType::Symbol) {
                 if (TOUCH_MODE) {
@@ -6495,7 +6517,7 @@ void MainWidget::handle_open_link(const std::wstring& text, bool copy) {
                     goto_page_with_page_number(page - 1);
                 }
                 else {
-                    handle_goto_link_with_page_and_offset(page - 1, offset_y);
+                    handle_goto_link_with_page_and_offset(page - 1, offset_y, offset_x);
                 }
             }
         }
@@ -11035,7 +11057,43 @@ void MainWidget::clear_keyboard_select_highlights() {
     opengl_widget->set_should_highlight_words(false);
 }
 
-void MainWidget::handle_goto_link_with_page_and_offset(int page, float y_offset) {
+void MainWidget::highlight_link_destination(int page, float y_offset, float x_offset){
+    const int LINK_TARGET_SIZE = 10;
+
+    DocumentPos top_left {
+        .page = page,
+        .x = x_offset - LINK_TARGET_SIZE,
+        .y = y_offset - LINK_TARGET_SIZE
+    };
+
+    DocumentPos bottom_right {
+        .page = page,
+        .x = x_offset + LINK_TARGET_SIZE,
+        .y = y_offset + LINK_TARGET_SIZE
+    };
+
+    DocumentRect link_rect = DocumentRect(top_left, bottom_right, page);
+
+    std::optional<AbsoluteRect> link_destination_rect = get_page_intersecting_rect(link_rect);
+    if (link_destination_rect) {
+        DocumentRect dest_rect = link_destination_rect.value().to_document(doc());
+
+        if (x_offset == 0){
+            // if the link has no x information, show a full-width highlight to handle the two-column documents better
+            dest_rect.rect.x0 = 0;
+            dest_rect.rect.x1 = doc()->get_page_width(page);
+        }
+
+        opengl_widget->set_synctex_highlights({ dest_rect });
+    }
+}
+
+void MainWidget::handle_goto_link_with_page_and_offset(int page, float y_offset, float x_offset) {
+
+    if (HIGHLIGHT_LINK_DESTINATION){
+        highlight_link_destination(page, y_offset, x_offset);
+    }
+
     long_jump_to_destination(page, y_offset);
     if (ALIGN_LINK_DEST_TO_TOP) {
         float top_offset = (main_document_view->get_view_height() / main_document_view->get_zoom_level()) / 2.0f;

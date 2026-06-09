@@ -463,7 +463,7 @@ public:
             for (int i = 0; i < commands.size(); i++) {
                 std::optional<Requirement> req = commands[i]->next_requirement(widget);
                 if (req) {
-                    if (req.value().type == RequirementType::Text) {
+                    if (req->type == RequirementType::Text || req->type == RequirementType::Password) {
                         commands[i]->set_text_requirement(value);
                     }
                     return;
@@ -1011,7 +1011,7 @@ void Command::set_next_requirement_with_string(std::wstring str) {
     std::optional<Requirement> maybe_req = next_requirement(widget);
     if (maybe_req) {
         Requirement req = maybe_req.value();
-        if (req.type == RequirementType::Text) {
+        if (req.type == RequirementType::Text || req.type == RequirementType::Password) {
             set_text_requirement(str);
         }
         else if (req.type == RequirementType::Symbol) {
@@ -1192,6 +1192,21 @@ public:
         }
         return L"";
     }
+};
+
+class PasswordCommand : public TextCommand{
+    public:
+    PasswordCommand(std::string name, MainWidget* w) : TextCommand(name, w) {}
+
+    virtual std::optional<Requirement> next_requirement(MainWidget* widget) override {
+        if (text.has_value()) {
+            return {};
+        }
+        else {
+            return Requirement{ RequirementType::Password, text_requirement_name() };
+        }
+    }
+
 };
 
 class GotoMark : public SymbolCommand {
@@ -5514,11 +5529,11 @@ public:
 };
 
 
-class EnterPasswordCommand : public TextCommand {
+class EnterPasswordCommand : public PasswordCommand {
 public:
     static inline const std::string cname = "enter_password";
     static inline const std::string hname = "Enter password";
-    EnterPasswordCommand(MainWidget* w) : TextCommand(cname, w) {};
+    EnterPasswordCommand(MainWidget* w) : PasswordCommand(cname, w) {};
     void perform() {
         std::string password = utf8_encode(text.value());
         widget->add_password(widget->main_document_view->get_document()->get_path(), password);

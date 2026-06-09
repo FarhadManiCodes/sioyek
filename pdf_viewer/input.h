@@ -23,7 +23,8 @@ enum RequirementType {
     Folder,
     Rect,
     Point,
-    Generic
+    Generic,
+    Password
 };
 
 struct Requirement {
