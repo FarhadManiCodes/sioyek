@@ -11069,6 +11069,12 @@ void MainWidget::highlight_link_destination(int page, float y_offset, float x_of
     if (link_destination_rect) {
         DocumentRect dest_rect = link_destination_rect.value().to_document(doc());
 
+        if (x_offset == 0){
+            // if the link has no x information, show a full-width highlight to handle the two-column documents better
+            dest_rect.rect.x0 = 0;
+            dest_rect.rect.x1 = doc()->get_page_width(page);
+        }
+
         opengl_widget->set_synctex_highlights({ dest_rect });
     }
 }
