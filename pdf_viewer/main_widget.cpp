@@ -3571,7 +3571,7 @@ void MainWidget::show_mark_selector() {
         });
 }
 
-void MainWidget::show_textbar(const std::wstring& command_name, const std::wstring& initial_value) {
+void MainWidget::show_textbar(const std::wstring& command_name, const std::wstring& initial_value, bool is_password) {
     QString init = "";
     text_suggestion_index = 0;
 
@@ -3580,7 +3580,7 @@ void MainWidget::show_textbar(const std::wstring& command_name, const std::wstri
     }
     if (TOUCH_MODE) {
 
-        TouchTextEdit* edit_widget = new TouchTextEdit(QString::fromStdWString(command_name), init, this);
+        TouchTextEdit* edit_widget = new TouchTextEdit(QString::fromStdWString(command_name), init, this, is_password);
 
         QObject::connect(edit_widget, &TouchTextEdit::confirmed, [&](QString text) {
             pop_current_widget();
@@ -3607,6 +3607,9 @@ void MainWidget::show_textbar(const std::wstring& command_name, const std::wstri
         text_command_line_edit->setFocus();
         if (initial_value.size() > 0) {
             text_command_line_edit->selectAll();
+        }
+        if (is_password) {
+            text_command_line_edit->setEchoMode(QLineEdit::EchoMode::Password);
         }
     }
 }
@@ -5730,12 +5733,11 @@ void MainWidget::advance_command(std::unique_ptr<Command> new_command, std::wstr
 
             Requirement next_requirement = pending_command_instance->next_requirement(this).value();
             if (next_requirement.type == RequirementType::Text) {
-                show_textbar(utf8_decode(next_requirement.name), pending_command_instance->get_text_default_value());
+                show_textbar(utf8_decode(next_requirement.name), pending_command_instance->get_text_default_value(), false);
                 text_command_line_edit->setEchoMode(QLineEdit::EchoMode::Normal);
             }
             else if (next_requirement.type == RequirementType::Password) {
-                show_textbar(utf8_decode(next_requirement.name), pending_command_instance->get_text_default_value());
-                text_command_line_edit->setEchoMode(QLineEdit::EchoMode::Password);
+                show_textbar(utf8_decode(next_requirement.name), pending_command_instance->get_text_default_value(), true);
             }
             else if (next_requirement.type == RequirementType::Symbol) {
                 if (TOUCH_MODE) {
