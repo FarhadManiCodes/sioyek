@@ -9,7 +9,7 @@
 class TouchTextEdit : public QWidget {
     Q_OBJECT
 public:
-    TouchTextEdit(QString name, QString initial_value, QWidget* parent = nullptr);
+    TouchTextEdit(QString name, QString initial_value, QWidget* parent = nullptr, bool is_password = false);
     void resizeEvent(QResizeEvent* resize_event) override;
     void keyPressEvent(QKeyEvent* kevent) override;
     void set_text(const std::wstring& txt);
@@ -24,5 +24,6 @@ signals:
 
 private:
     QQuickWidget* quick_widget = nullptr;
+    bool is_password = false;
 
 };
