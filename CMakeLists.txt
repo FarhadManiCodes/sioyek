@@ -184,6 +184,8 @@ if(APPLE)
   )
 else()
   string(REPLACE "-mno-direct-extern-access" "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
+  add_compile_options(-fvisibility=hidden -fvisibility-inlines-hidden)
+  add_link_options(-Wl,-O2)
   target_link_libraries(sioyek PRIVATE
       -L${CMAKE_CURRENT_SOURCE_DIR}/mupdf/build/release
       -lmupdf
