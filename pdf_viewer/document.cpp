@@ -1119,6 +1119,9 @@ void Document::load_page_dimensions(bool force_load_now) {
                 fz_page* page = fz_load_page(context_, doc_, i);
                 fz_page_label(context_, page, label_buffer, N);
                 page_labels_.push_back(utf8_decode(label_buffer));
+                if (page_labels_.back().size() == 0) {
+                    page_labels_.back() = std::to_wstring(i + 1);
+                }
                 PagelessDocumentRect page_rect = fz_bound_page(context_, page);
 
                 float page_height = page_rect.y1 - page_rect.y0;
