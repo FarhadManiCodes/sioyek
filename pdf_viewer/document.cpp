@@ -60,6 +60,7 @@ extern bool DEBUG;
 extern bool EXACT_HIGHLIGHT_SELECT;
 extern std::wstring ANNOTATIONS_DIR_PATH;
 extern bool LIGHTEN_COLORS_WHEN_EMBEDDING_ANNOTATIONS;
+extern bool USE_PAGE_LABELS_IN_TABLE_OF_CONTENTS;
 
 int Document::get_mark_index(char symbol) {
     for (size_t i = 0; i < marks.size(); i++) {
@@ -1347,7 +1348,12 @@ DocumentPos Document::absolute_to_page_pos_uncentered(AbsoluteDocumentPos absolu
 
 QStandardItemModel* Document::get_toc_model() {
     if (!cached_toc_model) {
-        cached_toc_model = get_model_from_toc(get_toc());
+        if (USE_PAGE_LABELS_IN_TABLE_OF_CONTENTS){
+            cached_toc_model = get_model_from_toc(get_toc(), page_labels);
+        }
+        else{
+            cached_toc_model = get_model_from_toc(get_toc(), {});
+        }
     }
     return cached_toc_model;
 }
