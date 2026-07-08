@@ -7527,7 +7527,6 @@ void MainWidget::unselect_last_char(){
 }
 
 void MainWidget::handle_debug_command() {
-    select_word_under_cursor();
 }
 
 void MainWidget::export_command_names(std::wstring file_path){

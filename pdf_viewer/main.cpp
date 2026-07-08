@@ -899,15 +899,17 @@ int main(int argc, char* args[]) {
 
     main_widget->show();
 
-    handle_args(app.arguments());
-    main_widget->execute_macro_if_enabled(STARTUP_COMMANDS);
-
-    //main_widget->run_multiple_commands(STARTUP_COMMANDS);
-
     // load input file from `QFileOpenEvent` for macOS drag and drop & "open with"
     QObject::connect(&app, &OpenWithApplication::file_ready, [&main_widget](const QString& file_name) {
         handle_args(QStringList() << QCoreApplication::applicationFilePath() << file_name);
         });
+
+    QCoreApplication::processEvents();
+
+    handle_args(app.arguments());
+    main_widget->execute_macro_if_enabled(STARTUP_COMMANDS);
+
+    //main_widget->run_multiple_commands(STARTUP_COMMANDS);
 
     // live reload the config files, no need to live reload on android because we are not changing config files anyway
 #ifndef SIOYEK_ANDROID
