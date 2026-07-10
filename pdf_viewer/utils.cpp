@@ -152,25 +152,34 @@ TocNode* get_toc_node_from_indices(const std::vector<TocNode*>& roots, const std
 }
 
 
-QStandardItem* get_item_tree_from_toc_helper(const std::vector<TocNode*>& children, QStandardItem* parent) {
+QStandardItem* get_item_tree_from_toc_helper(const std::vector<TocNode*>& children, QStandardItem* parent, const std::vector<std::wstring>& page_labels) {
 
     for (const auto* child : children) {
         QStandardItem* child_item = new QStandardItem(QString::fromStdWString(child->title));
-        QStandardItem* page_item = new QStandardItem("[ " + QString::number(child->page) + " ]");
+
+        QString page_string;
+        if (child->page < page_labels.size() && page_labels[child->page].size() > 0) {
+            page_string = QString::fromStdWString(page_labels[child->page]);
+        }
+        else {
+            page_string = QString::number(child->page);
+        }
+
+        QStandardItem* page_item = new QStandardItem("[ " + page_string + " ]");
         child_item->setData(child->page);
         page_item->setTextAlignment(Qt::AlignVCenter | Qt::AlignRight);
 
-        get_item_tree_from_toc_helper(child->children, child_item);
+        get_item_tree_from_toc_helper(child->children, child_item, page_labels);
         parent->appendRow(QList<QStandardItem*>() << child_item << page_item);
     }
     return parent;
 }
 
 
-QStandardItemModel* get_model_from_toc(const std::vector<TocNode*>& roots) {
+QStandardItemModel* get_model_from_toc(const std::vector<TocNode*>& roots, const std::vector<std::wstring>& page_labels) {
 
     QStandardItemModel* model = new QStandardItemModel();
-    get_item_tree_from_toc_helper(roots, model->invisibleRootItem());
+    get_item_tree_from_toc_helper(roots, model->invisibleRootItem(), page_labels);
     return model;
 }
 
@@ -505,7 +514,7 @@ std::vector<fz_stext_char*> reorder_stext_line(fz_stext_line* line) {
             });
     }
     else {
-        std::sort(reordered_chars.begin(), reordered_chars.end(), [](fz_stext_char* lhs, fz_stext_char* rhs) {
+        std::stable_sort(reordered_chars.begin(), reordered_chars.end(), [](fz_stext_char* lhs, fz_stext_char* rhs) {
             return (lhs->quad.lr.x <= rhs->quad.lr.x) && (lhs->quad.ll.x < rhs->quad.ll.x);
             });
     }

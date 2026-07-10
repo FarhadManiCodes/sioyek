@@ -18,6 +18,7 @@ Rectangle {
         anchors.right: parent.right
         anchors.top: parent.top
         height: 3 * parent.height / 4
+        echoMode: _isPassword ? TextInput.Password : TextInput.Normal
         color: "white"
         text: _initialValue
         focus: true
