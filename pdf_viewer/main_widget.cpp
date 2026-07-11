@@ -6612,7 +6612,15 @@ void MainWidget::handle_goto_window() {
                 windows[*window_id]->activateWindow();
             }
         },
-        this));
+        this,
+    [&](int* on_delete){
+        // close the selected window, if it is the current window, we should also focus the next window in the list
+        if (*on_delete < windows.size()) {
+            MainWidget* window_to_close = windows[*on_delete];
+            windows.erase(windows.begin() + *on_delete);
+            window_to_close->close();
+        }
+    }));
     show_current_widget();
 }
 
