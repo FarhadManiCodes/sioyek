@@ -119,6 +119,7 @@ int next_window_id = 0;
 std::vector<MainWidget*> windows;
 QString global_font_family;
 
+extern bool RESTORE_ALL_WINDOWS_ON_STARTUP;
 extern bool VERBOSE;
 extern bool USE_SYSTEM_THEME;
 extern std::wstring TAG_FONT_FACE;
@@ -453,13 +454,35 @@ MainWidget* handle_args(const QStringList& arguments, QLocalSocket* origin=nullp
     else {
         if (windows[0]->doc() == nullptr) {
             // when no file is specified, and no current file is open, use the last opened file or tutorial
-            std::vector<std::wstring> last_opened_file_paths = get_last_opened_file_name();
-            if (last_opened_file_paths.size() > 0) {
-                pdf_file_name = last_opened_file_paths[0];
-                windows[0]->open_tabs(last_opened_file_paths);
+            if (RESTORE_ALL_WINDOWS_ON_STARTUP) {
+                std::vector<WindowState> saved_states = get_last_saved_windows_states();
+                if (!saved_states.empty()) {
+                    if (saved_states[0].tabs.size() > 0) {
+                        pdf_file_name = saved_states[0].tabs[0];
+                        windows[0]->open_tabs(saved_states[0].tabs);
+                    }
+                    if (!saved_states[0].geometry_hex.empty()) {
+                        windows[0]->restoreGeometry(QByteArray::fromHex(QByteArray::fromStdString(saved_states[0].geometry_hex)));
+                    }
+                    for (size_t i = 1; i < saved_states.size(); ++i) {
+                        if (saved_states[i].tabs.size() > 0) {
+                            MainWidget::create_restored_window(windows[0], saved_states[i]);
+                        }
+                    }
+                }
+                else if (SHOULD_LOAD_TUTORIAL_WHEN_NO_OTHER_FILE) {
+                    pdf_file_name = tutorial_path.get_path();
+                }
             }
-            else if (SHOULD_LOAD_TUTORIAL_WHEN_NO_OTHER_FILE) {
-                pdf_file_name = tutorial_path.get_path();
+            else {
+                std::vector<std::wstring> last_opened_file_paths = get_last_opened_file_name();
+                if (last_opened_file_paths.size() > 0) {
+                    pdf_file_name = last_opened_file_paths[0];
+                    windows[0]->open_tabs(last_opened_file_paths);
+                }
+                else if (SHOULD_LOAD_TUTORIAL_WHEN_NO_OTHER_FILE) {
+                    pdf_file_name = tutorial_path.get_path();
+                }
             }
         }
     }

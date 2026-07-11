@@ -35,6 +35,7 @@ bool SIMPLIFY_FREEHAND_DRAWINGS = true;
 bool RECTO_VERSO_ADJUSTMENT = false;
 bool KEYBOARD_SELECT_INCLUSIVE = false;
 bool SHOW_COMMAND_HINTS = false;
+bool RESTORE_ALL_WINDOWS_ON_STARTUP = false;
 
 #ifdef SIOYEK_MOBILE
 bool TOUCH_MODE = true;
@@ -1048,6 +1049,7 @@ ConfigManager::ConfigManager(const Path& default_path, const Path& auto_path, co
     add_bool(L"recto_verso_adjustment", &RECTO_VERSO_ADJUSTMENT);
     add_bool(L"keyboard_select_inclusive", &KEYBOARD_SELECT_INCLUSIVE);
     add_bool(L"show_command_hints", &SHOW_COMMAND_HINTS);
+    add_bool(L"restore_all_windows_on_startup", &RESTORE_ALL_WINDOWS_ON_STARTUP);
 
     add_string(L"google_scholar_address", &GOOGLE_SCHOLAR_ADDRESS);
     add_string(L"item_list_prefix", &ITEM_LIST_PREFIX);

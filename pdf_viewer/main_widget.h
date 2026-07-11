@@ -136,6 +136,8 @@ enum class PaperDownloadFinishedAction {
 
 
 // if we inherit from QWidget there are problems on high refresh rate smartphone displays
+struct WindowState;
+
 #ifdef SIOYEK_ANDROID
 class MainWidget : public QQuickWidget {
 #else
@@ -143,6 +145,7 @@ class MainWidget : public QMainWindow {
 #endif
     Q_OBJECT
 public:
+    static MainWidget* create_restored_window(MainWidget* sibling, const WindowState& state);
     fz_context* mupdf_context = nullptr;
     DatabaseManager* db_manager = nullptr;
     DocumentManager* document_manager = nullptr;

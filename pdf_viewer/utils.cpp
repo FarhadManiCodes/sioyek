@@ -4466,6 +4466,9 @@ std::vector<std::wstring> get_last_opened_file_name() {
     std::ifstream last_state_file(last_opened_file_address_path.get_path_utf8());
     std::vector<std::wstring> res;
     while (std::getline(last_state_file, file_path_)) {
+        if (file_path_.rfind("[window]", 0) == 0) {
+            continue;
+        }
         res.push_back(utf8_decode(file_path_));
     }
     last_state_file.close();
@@ -4473,6 +4476,33 @@ std::vector<std::wstring> get_last_opened_file_name() {
     is_cached = true;
 
     return res;
+}
+
+std::vector<WindowState> get_last_saved_windows_states() {
+    std::vector<WindowState> states;
+    std::ifstream last_state_file(last_opened_file_address_path.get_path_utf8());
+    if (!last_state_file.is_open()) {
+        return states;
+    }
+    std::string line;
+    while (std::getline(last_state_file, line)) {
+        if (line.empty()) continue;
+        if (line.rfind("[window]", 0) == 0) {
+            WindowState state;
+            if (line.size() > 9) {
+                state.geometry_hex = line.substr(9);
+            }
+            states.push_back(state);
+        } else {
+            if (states.empty()) {
+                WindowState state;
+                states.push_back(state);
+            }
+            states.back().tabs.push_back(utf8_decode(line));
+        }
+    }
+    last_state_file.close();
+    return states;
 }
 
 bool stext_page_has_lines(fz_stext_page* page) {
