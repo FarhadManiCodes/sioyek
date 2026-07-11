@@ -131,6 +131,7 @@ extern std::wstring STARTUP_COMMANDS;
 extern bool SHOULD_LAUNCH_NEW_WINDOW;
 extern bool SHOULD_LAUNCH_NEW_INSTANCE;
 extern bool SHOULD_CHECK_FOR_LATEST_VERSION_ON_STARTUP;
+extern bool SHOULD_LOAD_TUTORIAL_WHEN_NO_OTHER_FILE;
 extern std::wstring SHARED_DATABASE_PATH;
 extern std::wstring SEARCH_URLS[26];
 extern std::wstring PAPERS_FOLDER_PATH;
@@ -457,7 +458,7 @@ MainWidget* handle_args(const QStringList& arguments, QLocalSocket* origin=nullp
                 pdf_file_name = last_opened_file_paths[0];
                 windows[0]->open_tabs(last_opened_file_paths);
             }
-            else {
+            else if (SHOULD_LOAD_TUTORIAL_WHEN_NO_OTHER_FILE) {
                 pdf_file_name = tutorial_path.get_path();
             }
         }
