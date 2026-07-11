@@ -2149,6 +2149,9 @@ void MainWidget::open_document(const std::wstring& path, std::optional<float> of
         update_scrollbar();
     }
 
+		// save current session
+		persist(true);
+
     deselect_document_indices();
     invalidate_render();
 
