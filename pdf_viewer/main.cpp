@@ -573,12 +573,6 @@ MainWidget* handle_args(const QStringList& arguments, QLocalSocket* origin=nullp
         target_window->execute_macro_from_origin(command_string.toStdWString(), origin);
     }
 
-    if (parser->isSet("focus-text")) {
-        QString text = parser->value("focus-text");
-        int page = parser->value("focus-text-page").toInt();
-        target_window->focus_text(page, text.toStdWString());
-    }
-
     // if no file is specified, use the previous file
     if (pdf_file_name == L"" && (windows[0]->doc() != nullptr)) {
         if (target_window->doc()) {
@@ -617,6 +611,13 @@ MainWidget* handle_args(const QStringList& arguments, QLocalSocket* origin=nullp
             target_window->open_document(pdf_file_name);
         }
     }
+
+    if (parser->isSet("focus-text")) {
+        QString text = parser->value("focus-text");
+        int page = parser->value("focus-text-page").toInt();
+        target_window->focus_text(page, text.toStdWString());
+    }
+
 
     invalidate_render();
 
