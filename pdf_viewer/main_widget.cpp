@@ -106,6 +106,7 @@ extern "C" void hideWindowTitleBar(WId);
 extern int next_window_id;
 
 extern bool SHOULD_USE_MULTIPLE_MONITORS;
+extern bool FAIL_SAFE_AUTO_SAVE_SESSION;
 extern bool MULTILINE_MENUS;
 extern bool SORT_BOOKMARKS_BY_LOCATION;
 extern bool SORT_HIGHLIGHTS_BY_LOCATION;
@@ -2150,7 +2151,9 @@ void MainWidget::open_document(const std::wstring& path, std::optional<float> of
     }
 
 		// save current session
-		persist(true);
+    if (FAIL_SAFE_AUTO_SAVE_SESSION){
+      persist(true);
+    }
 
     deselect_document_indices();
     invalidate_render();

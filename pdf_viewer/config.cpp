@@ -146,6 +146,7 @@ std::wstring DEFAULT_OPEN_FILE_PATH = L"";
 std::wstring ANNOTATIONS_DIR_PATH = L"";
 bool SHOULD_LOAD_TUTORIAL_WHEN_NO_OTHER_FILE = true;
 bool OPEN_LAST_FILE_ON_STARTUP = true;
+bool FAIL_SAFE_AUTO_SAVE_SESSION = false;
 bool SHOULD_LAUNCH_NEW_INSTANCE = false;
 bool SHOULD_LAUNCH_NEW_WINDOW = false;
 bool SHOULD_DRAW_UNRENDERED_PAGES = false;
@@ -978,6 +979,7 @@ ConfigManager::ConfigManager(const Path& default_path, const Path& auto_path, co
     add_bool(L"automatically_download_matching_paper_name", &AUTOMATICALLY_DOWNLOAD_MATCHING_PAPER_NAME);
     add_bool(L"should_load_tutorial_when_no_other_file", &SHOULD_LOAD_TUTORIAL_WHEN_NO_OTHER_FILE);
     add_bool(L"open_last_file_on_startup", &OPEN_LAST_FILE_ON_STARTUP);
+    add_bool(L"fail_safe_auto_save_session", &FAIL_SAFE_AUTO_SAVE_SESSION);
     add_bool(L"should_launch_new_instance", &SHOULD_LAUNCH_NEW_INSTANCE);
     add_bool(L"should_launch_new_window", &SHOULD_LAUNCH_NEW_WINDOW);
     add_bool(L"should_draw_unrendered_pages", &SHOULD_DRAW_UNRENDERED_PAGES);
