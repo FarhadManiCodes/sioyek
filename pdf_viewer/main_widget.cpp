@@ -6462,6 +6462,19 @@ MainWidget* MainWidget::create_restored_window(MainWidget* sibling, const Window
     return new_w;
 }
 
+void MainWidget::handle_delete_selected_annotation() {
+    if (selected_highlight_index != -1) {
+        doc()->delete_highlight_with_index(selected_highlight_index);
+        set_selected_highlight_index(-1);
+        return;
+    }
+    if (selected_bookmark_index != -1){
+        doc()->delete_bookmark_with_index(selected_bookmark_index);
+        set_selected_bookmark_index(-1);
+        return;
+    }
+}
+
 MainWidget* MainWidget::handle_new_window() {
     MainWidget* new_widget = new MainWidget(mupdf_context,
         db_manager,
@@ -6471,7 +6484,7 @@ MainWidget* MainWidget::handle_new_window() {
         input_handler,
         checksummer,
         should_quit);
-    new_widget->open_document(main_document_view->get_state());
+   	new_widget->open_document(main_document_view->get_state().document_path);
     new_widget->show();
     new_widget->apply_window_params_for_one_window_mode();
     new_widget->execute_macro_if_enabled(STARTUP_COMMANDS);
