@@ -6481,7 +6481,7 @@ MainWidget* MainWidget::handle_new_window() {
         input_handler,
         checksummer,
         should_quit);
-    new_widget->open_document(main_document_view->get_state());
+   	new_widget->open_document(main_document_view->get_state().document_path);
     new_widget->show();
     new_widget->apply_window_params_for_one_window_mode();
     new_widget->execute_macro_if_enabled(STARTUP_COMMANDS);
