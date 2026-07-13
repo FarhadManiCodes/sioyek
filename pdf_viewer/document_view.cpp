@@ -125,7 +125,7 @@ bool DocumentView::set_offsets(float new_offset_x, float new_offset_y, bool forc
     if (num_pages == 0) return false;
 
     float halfscreen_offset = !SCROLL_PAST_DOCUMENT_ENDS ? view_height / 2 / zoom_level : 0;
-    float max_y_offset = current_document->get_accum_page_height(num_pages - 1) + current_document->get_page_height(num_pages - 1) - halfscreen_offset;
+    float max_y_offset = current_document->get_accum_page_height(num_pages - 1) + current_document->get_page_height(num_pages - 1) - halfscreen_offset + get_status_bar_height();
     float min_y_offset = halfscreen_offset;
     float min_x_offset_normal = get_min_valid_x(false);
     float max_x_offset_normal = get_max_valid_x(false);
