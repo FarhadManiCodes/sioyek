@@ -2150,9 +2150,9 @@ void MainWidget::open_document(const std::wstring& path, std::optional<float> of
         update_scrollbar();
     }
 
-		// save current session
-    if (FAIL_SAFE_AUTO_SAVE_SESSION){
-      persist(true);
+    // save current session
+    if (FAIL_SAFE_AUTO_SAVE_SESSION) {
+        persist(true);
     }
 
     deselect_document_indices();
