@@ -3884,6 +3884,19 @@ public:
     }
 };
 
+class DeleteSelectedAnnotation : public Command {
+
+public:
+    static inline const std::string cname = "delete_selected_annotation";
+    static inline const std::string hname = "Delete the selected annotation";
+    DeleteSelectedAnnotation(MainWidget* w) : Command(cname, w) {};
+
+    void perform() override {
+        widget->handle_delete_selected_annotation();
+        widget->invalidate_render();
+    }
+};
+
 class EditVisibleBookmarkCommand : public GenericVisibleBookmarkCommand {
 
 public:
@@ -7151,6 +7164,7 @@ CommandManager::CommandManager(ConfigManager* config_manager) {
     register_command<DeleteBookmarkCommand>();
     register_command<DeleteHighlightCommand>();
     register_command<DeleteVisibleBookmarkCommand>();
+    register_command<DeleteSelectedAnnotation>();
     register_command<EditVisibleBookmarkCommand>();
     register_command<GotoPortalCommand>();
     register_command<GotoPortalCommand>();

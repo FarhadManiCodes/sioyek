@@ -108,6 +108,7 @@ extern "C" void hideWindowTitleBar(WId);
 extern int next_window_id;
 
 extern bool SHOULD_USE_MULTIPLE_MONITORS;
+extern bool FAIL_SAFE_AUTO_SAVE_SESSION;
 extern bool MULTILINE_MENUS;
 extern bool SORT_BOOKMARKS_BY_LOCATION;
 extern bool SORT_HIGHLIGHTS_BY_LOCATION;
@@ -218,6 +219,7 @@ extern bool ALLOW_MAIN_VIEW_SCROLL_WHILE_IN_OVERVIEW;
 extern bool SAME_WIDTH;
 extern bool KEYBOARD_SELECT_INCLUSIVE;
 extern bool SHOW_COMMAND_HINTS;
+extern bool RESTORE_ALL_WINDOWS_ON_STARTUP;
 
 extern bool SIMPLIFY_FREEHAND_DRAWINGS;
 extern bool SHOW_RIGHT_CLICK_CONTEXT_MENU;
@@ -851,15 +853,34 @@ void MainWidget::update_text_selection(AbsoluteDocumentPos abs_mpos) {
 void MainWidget::persist(bool persist_drawings) {
     main_document_view->persist(persist_drawings);
 
-    // write the address of the current document in a file so that the next time
-    // we launch the application, we open this document
-    if (main_document_view->get_document()) {
+    if (RESTORE_ALL_WINDOWS_ON_STARTUP) {
         std::ofstream last_path_file(last_opened_file_address_path.get_path_utf8());
-
-        //std::string encoded_file_name_str = utf8_encode(main_document_view->get_document()->get_path());
-        std::string encoded_file_name_str = utf8_encode(get_current_tabs_file_names());
-        last_path_file << encoded_file_name_str.c_str() << std::endl;
+        for (auto window : windows) {
+            if (window->main_document_view->get_document()) {
+                window->main_document_view->persist(persist_drawings);
+                QByteArray geom = window->saveGeometry();
+                std::string geom_hex = geom.toHex().constData();
+                last_path_file << "[window] " << geom_hex << "\n";
+                std::string tabs_str = utf8_encode(window->get_current_tabs_file_names());
+                last_path_file << tabs_str;
+                if (!tabs_str.empty() && tabs_str.back() != '\n') {
+                    last_path_file << "\n";
+                }
+            }
+        }
         last_path_file.close();
+    }
+    else {
+        // write the address of the current document in a file so that the next time
+        // we launch the application, we open this document
+        if (main_document_view->get_document()) {
+            std::ofstream last_path_file(last_opened_file_address_path.get_path_utf8());
+
+            //std::string encoded_file_name_str = utf8_encode(main_document_view->get_document()->get_path());
+            std::string encoded_file_name_str = utf8_encode(get_current_tabs_file_names());
+            last_path_file << encoded_file_name_str.c_str() << std::endl;
+            last_path_file.close();
+        }
     }
 }
 void MainWidget::closeEvent(QCloseEvent* close_event) {
@@ -2129,6 +2150,11 @@ void MainWidget::open_document(const std::wstring& path, std::optional<float> of
             scroll_bar->setPageStep(10);
         }
         update_scrollbar();
+    }
+
+    // save current session
+    if (FAIL_SAFE_AUTO_SAVE_SESSION) {
+        persist(true);
     }
 
     deselect_document_indices();
@@ -6417,6 +6443,43 @@ void MainWidget::handle_move_screen(int amount) {
     }
 }
 
+MainWidget* MainWidget::create_restored_window(MainWidget* sibling, const WindowState& state) {
+    MainWidget* new_w = new MainWidget(sibling);
+    new_w->execute_macro_if_enabled(STARTUP_COMMANDS);
+    new_w->open_tabs(state.tabs);
+    new_w->open_document(state.tabs[0]);
+    if (!state.geometry_hex.empty()) {
+        new_w->restoreGeometry(QByteArray::fromHex(QByteArray::fromStdString(state.geometry_hex)));
+    } else {
+        new_w->apply_window_params_for_one_window_mode();
+    }
+    
+    auto color_mode = sibling->opengl_widget->get_current_color_mode();
+    if (color_mode == PdfViewOpenGLWidget::ColorPalette::Dark) {
+        new_w->opengl_widget->set_dark_mode(true);
+    }
+    else if (color_mode == PdfViewOpenGLWidget::ColorPalette::Custom) {
+        new_w->opengl_widget->set_custom_color_mode(true);
+    }
+    
+    new_w->show();
+    windows.push_back(new_w);
+    return new_w;
+}
+
+void MainWidget::handle_delete_selected_annotation() {
+    if (selected_highlight_index != -1) {
+        doc()->delete_highlight_with_index(selected_highlight_index);
+        set_selected_highlight_index(-1);
+        return;
+    }
+    if (selected_bookmark_index != -1){
+        doc()->delete_bookmark_with_index(selected_bookmark_index);
+        set_selected_bookmark_index(-1);
+        return;
+    }
+}
+
 MainWidget* MainWidget::handle_new_window() {
     MainWidget* new_widget = new MainWidget(mupdf_context,
         db_manager,
@@ -6426,7 +6489,7 @@ MainWidget* MainWidget::handle_new_window() {
         input_handler,
         checksummer,
         should_quit);
-    new_widget->open_document(main_document_view->get_state());
+   	new_widget->open_document(main_document_view->get_state().document_path);
     new_widget->show();
     new_widget->apply_window_params_for_one_window_mode();
     new_widget->execute_macro_if_enabled(STARTUP_COMMANDS);
@@ -6614,7 +6677,15 @@ void MainWidget::handle_goto_window() {
                 windows[*window_id]->activateWindow();
             }
         },
-        this));
+        this,
+    [&](int* on_delete){
+        // close the selected window, if it is the current window, we should also focus the next window in the list
+        if (*on_delete < windows.size()) {
+            MainWidget* window_to_close = windows[*on_delete];
+            windows.erase(windows.begin() + *on_delete);
+            window_to_close->close();
+        }
+    }));
     show_current_widget();
 }
 
