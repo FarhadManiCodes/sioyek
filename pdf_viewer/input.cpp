@@ -5764,6 +5764,7 @@ public:
     GotoSelectedTextCommand(MainWidget* w) : Command(cname, w) {};
 
     void perform() {
+        widget->update_text_selection_with_begin_and_end(widget->selection_begin, widget->selection_end);
         widget->long_jump_to_destination(widget->selection_begin.y);
     }
 

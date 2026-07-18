@@ -1036,6 +1036,7 @@ public:
     void delete_menu_nodes(MenuNode* items);
     void set_pending_portal(std::optional<std::wstring> doc_path, Portal portal);
     void set_pending_portal(std::optional<std::pair<std::optional<std::wstring>, Portal>> pending_portal);
+    void update_text_selection_with_begin_and_end(AbsoluteDocumentPos begin, AbsoluteDocumentPos end);
     void update_text_selection(AbsoluteDocumentPos mouse_abspos);
     int update_recent_clicks(AbsoluteDocumentPos mouse_abspos);
     void handle_triple_click(AbsoluteDocumentPos mouse_abspos);

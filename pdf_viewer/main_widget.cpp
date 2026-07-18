@@ -817,34 +817,35 @@ void MainWidget::mouseMoveEvent(QMouseEvent* mouse_event) {
     }
 }
 
+void MainWidget::update_text_selection_with_begin_and_end(AbsoluteDocumentPos begin, AbsoluteDocumentPos end) {
+    selection_begin = begin;
+    selection_end = end;
+
+    if (selection_mode == SelectionMode::Line) {
+        main_document_view->get_line_selection(selection_begin,
+            selection_end,
+            main_document_view->selected_character_rects,
+            selected_text);
+    }
+    else {
+        main_document_view->get_text_selection(selection_begin,
+            selection_end,
+            selection_mode == SelectionMode::Word ,
+            main_document_view->selected_character_rects,
+            selected_text);
+    }
+    selected_text_is_dirty = false;
+
+    validate_render();
+    last_text_select_time = QTime::currentTime();
+}
+
 void MainWidget::update_text_selection(AbsoluteDocumentPos abs_mpos) {
     // When selecting, we occasionally update selected text
     //todo: maybe have a timer event that handles this periodically
     int msecs_since_last_text_select = last_text_select_time.msecsTo(QTime::currentTime());
     if (msecs_since_last_text_select > 16 || msecs_since_last_text_select < 0) {
-
-        selection_begin = last_mouse_down;
-        selection_end = abs_mpos;
-        //fz_point selection_begin = { last_mouse_down.x(), last_mouse_down.y()};
-        //fz_point selection_end = { document_x, document_y };
-
-        if (selection_mode == SelectionMode::Line) {
-            main_document_view->get_line_selection(selection_begin,
-                selection_end,
-                main_document_view->selected_character_rects,
-                selected_text);
-        }
-        else {
-            main_document_view->get_text_selection(selection_begin,
-                selection_end,
-                selection_mode == SelectionMode::Word ,
-                main_document_view->selected_character_rects,
-                selected_text);
-        }
-        selected_text_is_dirty = false;
-
-        validate_render();
-        last_text_select_time = QTime::currentTime();
+        update_text_selection_with_begin_and_end(selection_begin, abs_mpos);
     }
 }
 
