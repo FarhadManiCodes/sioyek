@@ -7577,6 +7577,7 @@ void MainWidget::select_next_char(){
         float mid_x = (main_document_view->selected_character_rects.back().x0 + main_document_view->selected_character_rects.back().x1) / 2;
         float mid_y = (main_document_view->selected_character_rects.back().y0 + main_document_view->selected_character_rects.back().y1) / 2;
         mid_x += doc()->get_page_width(get_current_page_number()) / 2;
+        mid_y -= doc()->get_accum_page_height(get_current_page_number());
 
         fz_point point = {mid_x, mid_y};
         fz_stext_char* next_char = doc()->get_next_char_after_selection(get_current_page_number(), point);
