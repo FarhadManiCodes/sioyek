@@ -3926,6 +3926,18 @@ public:
     }
 };
 
+class EditVisibleHighlightCommand : public GenericHighlightCommand {
+
+public:
+    static inline const std::string cname = "edit_visible_highlight";
+    static inline const std::string hname = "";
+    EditVisibleHighlightCommand(MainWidget* w) : GenericHighlightCommand(cname, w) {};
+
+    void perform_with_highlight_selected() override {
+        widget->execute_macro_if_enabled(L"edit_selected_highlight");
+    }
+};
+
 class DeleteHighlightCommand : public GenericHighlightCommand {
 
 public:
@@ -7181,6 +7193,7 @@ CommandManager::CommandManager(ConfigManager* config_manager) {
     register_command<DeletePortalCommand>();
     register_command<DeleteBookmarkCommand>();
     register_command<DeleteHighlightCommand>();
+    register_command<EditVisibleHighlightCommand>();
     register_command<DeleteVisibleBookmarkCommand>();
     register_command<DeleteSelectedAnnotationCommand>();
     register_command<EditSelectedAnnotationCommand>();
