@@ -138,7 +138,7 @@ extern std::wstring SEARCH_URLS[26];
 extern std::wstring PAPERS_FOLDER_PATH;
 extern bool NO_AUTO_CONFIG;
 extern bool DEFAULT_DARK_MODE;
-
+extern int NUM_CACHED_PAGES;
 
 std::wstring strip_uri(std::wstring pdf_file_name, std::optional<int>* out_page) {
 
@@ -853,6 +853,10 @@ int main(int argc, char* args[]) {
 
     bool quit = false;
 
+    PdfRenderer* pdf_renderer = new PdfRenderer(4, &quit, mupdf_context);
+    pdf_renderer->set_num_cached_pages(NUM_CACHED_PAGES);
+    pdf_renderer->start_threads();
+
     qDebug() << "SIOYEK";
     InputHandler input_handler(default_keys_path, user_keys_paths, command_manager);
 
@@ -871,7 +875,7 @@ int main(int argc, char* args[]) {
     QQuickWindow::setGraphicsApi(QSGRendererInterface::OpenGL);
 
 
-    MainWidget* main_widget = new MainWidget(mupdf_context, &db_manager, &document_manager, &config_manager, command_manager, &input_handler, &checksummer, &quit);
+    MainWidget* main_widget = new MainWidget(mupdf_context, &db_manager, &document_manager, &config_manager, command_manager, &input_handler, &checksummer, &quit, pdf_renderer);
     windows.push_back(main_widget);
 
 #ifndef SIOYEK_ANDROID
@@ -974,6 +978,9 @@ int main(int argc, char* args[]) {
     for (size_t i = 0; i < windows_to_delete.size(); i++) {
         delete windows_to_delete[i];
     }
+
+    pdf_renderer->join_threads();
+    delete pdf_renderer;
 
     return 0;
 }

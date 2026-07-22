@@ -886,7 +886,7 @@ void MainWidget::closeEvent(QCloseEvent* close_event) {
     handle_close_event();
 }
 
-MainWidget::MainWidget(MainWidget* other) : MainWidget(other->mupdf_context, other->db_manager, other->document_manager, other->config_manager, other->command_manager, other->input_handler, other->checksummer, other->should_quit) {
+MainWidget::MainWidget(MainWidget* other) : MainWidget(other->mupdf_context, other->db_manager, other->document_manager, other->config_manager, other->command_manager, other->input_handler, other->checksummer, other->should_quit, other->pdf_renderer) {
 
 }
 
@@ -898,6 +898,7 @@ MainWidget::MainWidget(fz_context* mupdf_context,
     InputHandler* input_handler,
     CachedChecksummer* checksummer,
     bool* should_quit_ptr,
+    PdfRenderer* pdf_renderer,
     QWidget* parent) :
 #ifdef SIOYEK_ANDROID
     QQuickWidget(parent),
@@ -929,9 +930,7 @@ MainWidget::MainWidget(fz_context* mupdf_context,
     central_widget->setMouseTracking(true);
 
     inverse_search_command = INVERSE_SEARCH_COMMAND;
-    pdf_renderer = new PdfRenderer(4, should_quit_ptr, mupdf_context);
-    pdf_renderer->set_num_cached_pages(NUM_CACHED_PAGES);
-    pdf_renderer->start_threads();
+    this->pdf_renderer = pdf_renderer;
 
 
     //scratchpad = new ScratchPad();
@@ -1377,11 +1376,6 @@ MainWidget::~MainWidget() {
     }
     validation_interval_timer->stop();
     remove_self_from_windows();
-
-    if (windows.size() == 0) {
-        *should_quit = true;
-        pdf_renderer->join_threads();
-    }
 
     if (tts) {
         delete tts;
@@ -6487,7 +6481,8 @@ MainWidget* MainWidget::handle_new_window() {
         command_manager,
         input_handler,
         checksummer,
-        should_quit);
+        should_quit,
+        pdf_renderer);
    	new_widget->open_document(main_document_view->get_state().document_path);
     new_widget->show();
     new_widget->apply_window_params_for_one_window_mode();

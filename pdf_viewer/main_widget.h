@@ -525,6 +525,7 @@ public:
         InputHandler* input_handler,
         CachedChecksummer* checksummer,
         bool* should_quit_ptr,
+        PdfRenderer* pdf_renderer,
         QWidget* parent = nullptr
     );
     MainWidget(MainWidget* other);
