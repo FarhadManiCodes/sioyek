@@ -1,4 +1,4 @@
-﻿// deduplicate database code
+// deduplicate database code
 // make sure jsons exported by previous sioyek versions can be imported
 // maybe: use a better method to handle deletion of canceled download portals
 // change find_closest_*_index and argminf to use the fact that the list is sorted and speed up the search (not important if there are not a ridiculous amount of highlight/bookmarks)
@@ -7595,6 +7595,7 @@ void MainWidget::unselect_last_char(){
 }
 
 void MainWidget::handle_debug_command() {
+    
 }
 
 void MainWidget::export_command_names(std::wstring file_path){

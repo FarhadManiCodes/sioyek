@@ -24,6 +24,10 @@ else()
   )
 endif()
 
+if(APPLE AND TARGET WrapOpenGL::WrapOpenGL)
+  set_property(TARGET WrapOpenGL::WrapOpenGL PROPERTY INTERFACE_LINK_LIBRARIES "-framework OpenGL")
+endif()
+
 qt_standard_project_setup()
 
 qt_add_executable(sioyek WIN32 MACOSX_BUNDLE
@@ -75,6 +79,27 @@ qt_add_executable(sioyek WIN32 MACOSX_BUNDLE
 )
 
 if(APPLE)
+    file(GLOB_RECURSE SIOYEK_SHADER_FILES CONFIGURE_DEPENDS
+      "${CMAKE_CURRENT_SOURCE_DIR}/pdf_viewer/shaders/*"
+    )
+
+    target_sources(sioyek PRIVATE
+      pdf_viewer/keys.config
+      pdf_viewer/prefs.config
+      ${SIOYEK_SHADER_FILES}
+    )
+
+    set_source_files_properties(
+      pdf_viewer/keys.config
+      pdf_viewer/prefs.config
+        PROPERTIES MACOSX_PACKAGE_LOCATION "Resources"
+    )
+
+    set_source_files_properties(
+      ${SIOYEK_SHADER_FILES}
+        PROPERTIES MACOSX_PACKAGE_LOCATION "Resources/shaders"
+    )
+
   target_sources(sioyek PRIVATE
         pdf_viewer/macos_specific.mm
   )
