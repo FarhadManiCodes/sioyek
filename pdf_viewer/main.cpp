@@ -139,6 +139,7 @@ extern std::wstring PAPERS_FOLDER_PATH;
 extern bool NO_AUTO_CONFIG;
 extern bool DEFAULT_DARK_MODE;
 extern int NUM_CACHED_PAGES;
+extern bool DISABLE_CURSOR_BLINKING;
 
 std::wstring strip_uri(std::wstring pdf_file_name, std::optional<int>* out_page) {
 
@@ -974,6 +975,9 @@ int main(int argc, char* args[]) {
         check_for_updates(main_widget, APPLICATION_VERSION);
     }
 
+    if (DISABLE_CURSOR_BLINKING){
+        QApplication::setCursorFlashTime(0);
+    }
     app.exec();
 
     quit = true;
