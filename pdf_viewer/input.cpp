@@ -2374,10 +2374,11 @@ public:
         rect_ = value;
         BookMark incomplete_bookmark;
 
-        incomplete_bookmark.begin_x = value.x0;
-        incomplete_bookmark.begin_y = value.y0;
-        incomplete_bookmark.end_x = value.x1;
-        incomplete_bookmark.end_y = value.y1;
+        incomplete_bookmark.begin_x = std::min<float>(value.x0, value.x1);
+        incomplete_bookmark.end_x = std::max<float>(value.x0, value.x1);
+        incomplete_bookmark.begin_y = std::min<float>(value.y0, value.y1);
+        incomplete_bookmark.end_y = std::max<float>(value.y0, value.y1);
+
         incomplete_bookmark.color[0] = FREETEXT_BOOKMARK_COLOR[0];
         incomplete_bookmark.color[1] = FREETEXT_BOOKMARK_COLOR[1];
         incomplete_bookmark.color[2] = FREETEXT_BOOKMARK_COLOR[2];
