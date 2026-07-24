@@ -6359,6 +6359,42 @@ public:
     }
 };
 
+class EmbedGeneratedTocCommand : public Command {
+public:
+    static inline const std::string cname = "embed_generated_toc";
+    static inline const std::string hname = "Embed generated table of contents into a new PDF file";
+    EmbedGeneratedTocCommand(MainWidget* w) : Command(cname, w) {};
+
+    std::optional<std::wstring> file_path = {};
+
+    virtual void set_file_requirement(std::wstring value) {
+        file_path = value;
+    }
+
+    std::optional<QString> get_file_path_requirement_root_dir() {
+        QFileInfo file_info(QString::fromStdWString(widget->doc()->get_path()));
+        QString full_path = file_info.absolutePath();
+        QString file_path = file_info.fileName();
+        QString parent_path = full_path.mid(full_path.size() - file_path.size());
+        return parent_path;
+    }
+
+    std::optional<Requirement> next_requirement(MainWidget* widget) {
+        if (!file_path.has_value()) {
+            Requirement req = { RequirementType::File, "File Path" };
+            return req;
+        }
+        return {};
+    }
+
+    void perform() {
+        if (file_path->size() > 0) {
+            widget->main_document_view->get_document()->embed_generated_toc(file_path.value());
+        }
+    }
+};
+
+
 class CopyWindowSizeConfigCommand : public Command {
 public:
     static inline const std::string cname = "copy_window_size_config";
@@ -7338,6 +7374,7 @@ CommandManager::CommandManager(ConfigManager* config_manager) {
     register_command<ToggleHorizontalLockCommand>();
     register_command<ExecuteCommand>();
     register_command<EmbedAnnotationsCommand>();
+    register_command<EmbedGeneratedTocCommand>();
     register_command<ImportAnnotationsCommand>();
     register_command<CopyWindowSizeConfigCommand>();
     register_command<ToggleSelectHighlightCommand>();
