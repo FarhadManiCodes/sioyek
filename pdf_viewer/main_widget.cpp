@@ -311,7 +311,8 @@ void set_filtered_select_menu(MainWidget* main_widget, bool fuzzy, bool multilin
     int selected_index,
     std::function<void(T*)> on_select,
     std::function<void(T*)> on_delete,
-    std::function<void(T*)> on_edit = nullptr
+    std::function<void(T*)> on_edit = nullptr,
+    bool last_column_fixed = false
 ) {
     if (columns.size() > 1) {
 
@@ -354,7 +355,7 @@ void set_filtered_select_menu(MainWidget* main_widget, bool fuzzy, bool multilin
                     if (val && on_delete) {
                         on_delete(val);
                     }
-                });
+                }, last_column_fixed);
             w->set_filter_column_index(-1);
             if (on_edit) {
                 w->set_on_edit_function(on_edit);
@@ -6097,7 +6098,7 @@ void MainWidget::handle_goto_bookmark_global() {
             BookMark bm = desc_bm_pair.second;
             std::wstring file_name = Path(path.value()).filename().value_or(L"");
             descs.push_back(ITEM_LIST_PREFIX + L" " + bm.description);
-            file_names.push_back(truncate_string(file_name, 50));
+            file_names.push_back(file_name);
             book_states.push_back({ path.value(), bm.get_y_offset(), bm.uuid});
         }
     }
@@ -6111,8 +6112,9 @@ void MainWidget::handle_goto_bookmark_global() {
         },
         [&](BookState* book_state) {
             db_manager->delete_bookmark(book_state->uuid);
-        }
-        );
+        },
+        nullptr,
+        true);
     show_current_widget();
 }
 
@@ -6226,7 +6228,7 @@ void MainWidget::handle_goto_highlight_global() {
                 has_annots = true;
             }
 
-            file_names.push_back(truncate_string(file_name, 50));
+            file_names.push_back(file_name);
 
             book_states.push_back({ path.value(), hl.selection_begin.y, hl.uuid });
 
@@ -6255,7 +6257,9 @@ void MainWidget::handle_goto_highlight_global() {
             }
         }, [&](BookState* state) {
             db_manager->delete_highlight(state->uuid);
-        });
+        },
+        nullptr,
+        true);
 
     show_current_widget();
 }
