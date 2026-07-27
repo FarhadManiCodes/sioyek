@@ -219,6 +219,7 @@ extern bool KEYBOARD_SELECT_INCLUSIVE;
 extern bool SHOW_COMMAND_HINTS;
 extern bool RESTORE_ALL_WINDOWS_ON_STARTUP;
 
+extern bool FREE_TOUCHPAD_MOVEMENT;
 extern bool SIMPLIFY_FREEHAND_DRAWINGS;
 extern bool SHOW_RIGHT_CLICK_CONTEXT_MENU;
 extern std::wstring CONTEXT_MENU_ITEMS;
@@ -3378,11 +3379,13 @@ void MainWidget::wheelEvent(QWheelEvent* wevent) {
     int num_repeats = abs(wevent->angleDelta().y() / 120);
     float num_repeats_f_y = abs(wevent->angleDelta().y() / 120.0);
     float num_repeats_f_x = abs(wevent->angleDelta().x() / 120.0);
-    if (std::abs(num_repeats_f_x) > std::abs(num_repeats_f_y)){
-        num_repeats_f_y = 0;
-    }
-    else{
-        num_repeats_f_x = 0;
+    if (!FREE_TOUCHPAD_MOVEMENT){
+        if (std::abs(num_repeats_f_x) > std::abs(num_repeats_f_y)){
+            num_repeats_f_y = 0;
+        }
+        else{
+            num_repeats_f_x = 0;
+        }
     }
 #else
     int num_repeats = abs(wevent->delta() / 120);
