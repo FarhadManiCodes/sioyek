@@ -2346,6 +2346,47 @@ PdfOutlineResult build_pdf_outline_tree(
     return result;
 }
 
+QJsonObject json_object_from_toc_node(const TocNode* node){
+
+    if (node == nullptr) {
+        return QJsonObject();
+    }
+
+    QJsonObject result;
+    result["page"] = node->page;
+    result["title"] = QString::fromStdWString(node->title);
+    result["x"] = node->x;
+    result["y"] = node->y;
+
+    if (node->children.size() > 0){
+        QJsonArray children;
+
+        for (const TocNode* child : node->children) {
+            children.append(json_object_from_toc_node(child));
+        }
+
+        result["children"] = children;
+    }
+
+    return result;
+}
+
+void Document::export_generated_toc(std::wstring new_file_path) {
+    QJsonDocument doc;
+
+    QJsonArray top_level_objects;
+    for (const TocNode* node : created_top_level_toc_nodes) {
+        top_level_objects.append(json_object_from_toc_node(node));
+    }
+    doc.setArray(top_level_objects);
+
+    QFile json_file(QString::fromStdWString(new_file_path));
+    if (json_file.open(QFile::WriteOnly)){
+        json_file.write(doc.toJson());
+        json_file.close();
+    }
+}
+
 void Document::embed_generated_toc(std::wstring new_file_path) {
     pdf_document* pdf_doc = pdf_specifics(context, doc);
     if (pdf_doc == nullptr || created_top_level_toc_nodes.empty()) {
