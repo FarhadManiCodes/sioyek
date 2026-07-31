@@ -1625,7 +1625,7 @@ bool BaseSelectorWidget::eventFilter(QObject* obj, QEvent* event) {
                 ) {
                 if (!line_edit->hasSelectedText()){
                     bool is_tree = get_view_stylesheet_type_name() == "QTreeView";
-                    if (is_tree){
+                    if (is_tree || (key_event->key() == Qt::Key_Down) || (key_event->key() == Qt::Key_Up)){
 #ifdef SIOYEK_QT6
                         QKeyEvent* newEvent = key_event->clone();
 #else
