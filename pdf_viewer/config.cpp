@@ -234,8 +234,8 @@ bool ALLOW_MAIN_VIEW_SCROLL_WHILE_IN_OVERVIEW = false;
 std::wstring CONTEXT_MENU_ITEMS = L"";
 std::wstring CONTEXT_MENU_ITEMS_FOR_SELECTED_TEXT = L"copy|add_highlight(a)|add_highlight(b)|add_highlight(c)";
 std::wstring CONTEXT_MENU_ITEMS_FOR_LINKS = L"";
-std::wstring CONTEXT_MENU_ITEMS_FOR_HIGHLIGHTS = L"delete_highlight|edit_selected_highlight|add_highlight(a)|add_highlight(b)|add_highlight(c)";
-std::wstring CONTEXT_MENU_ITEMS_FOR_BOOKMARKS = L"delete_visible_bookmark|edit_selected_bookmark|move_selected_bookmark";
+std::wstring CONTEXT_MENU_ITEMS_FOR_HIGHLIGHTS = L"delete_highlight|edit_selected_annotation|add_highlight(a)|add_highlight(b)|add_highlight(c)";
+std::wstring CONTEXT_MENU_ITEMS_FOR_BOOKMARKS = L"delete_visible_annotation|edit_selected_annotation|move_selected_bookmark";
 std::wstring CONTEXT_MENU_ITEMS_FOR_OVERVIEW = L"";
 
 bool RIGHT_CLICK_CONTEXT_MENU = false;

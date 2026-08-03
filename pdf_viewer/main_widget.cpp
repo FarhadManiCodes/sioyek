@@ -13,6 +13,7 @@
 // smartviewcandidates are not filled when right clicking on a link?
 
 
+#include "coordinates.h"
 #include <iostream>
 #include <vector>
 #include <string>
@@ -11097,33 +11098,49 @@ void MainWidget::set_selected_bookmark_index(int index) {
 }
 
 void MainWidget::handle_highlight_tags_pre_perform(const std::vector<int>& visible_highlight_indices) {
-    const std::vector<Highlight>& highlights = doc()->get_highlights();
-
-    std::vector<DocumentRect> highlight_rects;
+    std::vector<SioyekVisibleObjectIndex> visible_object_indices;
     for (auto ind : visible_highlight_indices) {
-        const Highlight& highlight = highlights[ind];
-        if (highlight.highlight_rects.size() > 0) {
-            highlight_rects.push_back(highlight.highlight_rects[0].to_document(doc()));
-        }
+        visible_object_indices.push_back(SioyekVisibleObjectIndex{ SioyekVisibleObjectType::Highlight, ind });
     }
-
-    opengl_widget->set_highlight_words(highlight_rects);
-    opengl_widget->set_should_highlight_words(true);
+    return handle_visible_objects_tags_pre_perform(visible_object_indices);
 
 }
 
 void MainWidget::handle_visible_bookmark_tags_pre_perform(const std::vector<int>& visible_bookmark_indices){
+    std::vector<SioyekVisibleObjectIndex> visible_object_indices;
+    for (auto ind : visible_bookmark_indices) {
+        visible_object_indices.push_back(SioyekVisibleObjectIndex{ SioyekVisibleObjectType::Bookmark, ind });
+    }
+    return handle_visible_objects_tags_pre_perform(visible_object_indices);
+}
+
+void MainWidget::handle_visible_objects_tags_pre_perform(const std::vector<SioyekVisibleObjectIndex>& visible_object_indices) {
     const std::vector<BookMark>& bookmarks = doc()->get_bookmarks();
 
-    std::vector<DocumentRect> bookmark_rects;
-    for (auto ind : visible_bookmark_indices) {
-        const BookMark& bookmark = bookmarks[ind];
-        AbsoluteRect bookmark_rect = bookmark.get_rectangle();
-        bookmark_rects.push_back(bookmark_rect.to_document(doc()));
+    std::vector<DocumentRect> annotation_rects;
+    for (auto obj_index : visible_object_indices) {
+        if (obj_index.type == SioyekVisibleObjectType::Bookmark) {
+            const BookMark& bookmark = bookmarks[obj_index.index];
+            AbsoluteRect bookmark_rect = bookmark.get_rectangle();
+            annotation_rects.push_back(bookmark_rect.to_document(doc()));
+        }
+        else if (obj_index.type == SioyekVisibleObjectType::Highlight) {
+            const Highlight& highlight = doc()->get_highlights()[obj_index.index];
+            if (highlight.highlight_rects.size() > 0) {
+                annotation_rects.push_back(highlight.highlight_rects[0].to_document(doc()));
+            }
+            else{
+                DocumentRect empty_rect;
+                empty_rect.page = 0;
+                empty_rect.rect = { 0, 0, 0, 0 };
+                annotation_rects.push_back(empty_rect);
+            }
+        }
     }
 
-    opengl_widget->set_highlight_words(bookmark_rects);
+    opengl_widget->set_highlight_words(annotation_rects);
     opengl_widget->set_should_highlight_words(true);
+
 }
 
 void MainWidget::clear_keyboard_select_highlights() {
@@ -11686,8 +11703,8 @@ QMenuBar* MainWidget::create_main_menu_bar(){
             new MenuNode{ "add_bookmark", "", {} },
             new MenuNode{ "add_marked_bookmark", "", {} },
             new MenuNode{ "add_freetext_bookmark", "", {} },
-            new MenuNode{ "delete_visible_bookmark", "", {} },
-            new MenuNode{ "edit_visible_bookmark", "Edit the selected bookmark", {} },
+            new MenuNode{ "delete_visible_annotation", "", {} },
+            new MenuNode{ "edit_visible_annotation", "Edit the selected annotation", {} },
         }
     };
 
@@ -11708,7 +11725,6 @@ QMenuBar* MainWidget::create_main_menu_bar(){
             new MenuNode{ "add_highlight", "", {} },
             new MenuNode{ "add_annot_to_selected_highlight", "", {} },
             new MenuNode{ "add_highlight_with_current_type", "", {} },
-            new MenuNode{ "edit_visible_highlight", "Edit the selected highlight", {} },
             new MenuNode{ "delete_highlight", "", {} },
         }
     };

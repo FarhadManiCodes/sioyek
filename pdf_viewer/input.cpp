@@ -3841,47 +3841,79 @@ public:
 
 };
 
-class GenericVisibleBookmarkCommand : public GenericVisibleSelectCommand {
+class GenericVisibleAnnotationCommand : public GenericVisibleSelectCommand {
+
+    std::vector<SioyekVisibleObjectIndex> visible_objects;
 
 public:
-    GenericVisibleBookmarkCommand(std::string name, MainWidget* w) : GenericVisibleSelectCommand(name, w) {};
+    GenericVisibleAnnotationCommand(std::string name, MainWidget* w) : GenericVisibleSelectCommand(name, w) {};
 
     int get_selected_item_index() override{
-        return widget->selected_bookmark_index;
+        if (widget->selected_bookmark_index != -1) {
+            return widget->selected_bookmark_index;
+        }
+        return widget->selected_highlight_index;
     }
 
     std::vector<int> get_visible_item_indices() override {
-        return widget->main_document_view->get_visible_bookmark_indices();
+        visible_objects.clear();
+
+        std::vector<int> visible_object_indices;
+        std::vector<int> visible_bookmark_indices = widget->main_document_view->get_visible_bookmark_indices();
+        std::vector<int> visible_highlight_indices = widget->main_document_view->get_visible_highlight_indices();
+
+        for (const auto& index : visible_bookmark_indices) {
+            visible_objects.push_back({ SioyekVisibleObjectType::Bookmark, index });
+            visible_object_indices.push_back(visible_object_indices.size());
+        }
+        for (const auto& index : visible_highlight_indices) {
+            visible_objects.push_back({ SioyekVisibleObjectType::Highlight, index });
+            visible_object_indices.push_back(visible_object_indices.size());
+        }
+
+        return visible_object_indices;
     }
 
 
     void handle_indices_pre_perform() override {
-        widget->handle_visible_bookmark_tags_pre_perform(visible_item_indices);
+        widget->handle_visible_objects_tags_pre_perform(visible_objects);
     }
 
-    virtual void perform_with_bookmark_selected() = 0;
+    virtual void perform_with_visible_object_selected() = 0;
 
     void perform_with_selected_index(std::optional<int> index) override {
         if (index) {
-            if (index < visible_item_indices.size()) {
-                widget->set_selected_bookmark_index(visible_item_indices[index.value()]);
+            if (index < visible_objects.size()) {
+                if (visible_objects[index.value()].type == SioyekVisibleObjectType::Highlight) {
+                    widget->set_selected_highlight_index(visible_objects[index.value()].index);
+                    widget->set_selected_bookmark_index(-1);
+                }
+                else if (visible_objects[index.value()].type == SioyekVisibleObjectType::Bookmark) {
+                    widget->set_selected_bookmark_index(visible_objects[index.value()].index);
+                    widget->set_selected_highlight_index(-1);
+                }
             }
         }
 
-        perform_with_bookmark_selected();
+        perform_with_visible_object_selected();
     }
 
 };
 
-class DeleteVisibleBookmarkCommand : public GenericVisibleBookmarkCommand {
+class DeleteVisibleAnnotationCommand : public GenericVisibleAnnotationCommand {
 
 public:
-    static inline const std::string cname = "delete_visible_bookmark";
-    static inline const std::string hname = "Delete the selected bookmark";
-    DeleteVisibleBookmarkCommand(MainWidget* w) : GenericVisibleBookmarkCommand(cname, w) {};
+    static inline const std::string cname = "delete_visible_annotation";
+    static inline const std::string hname = "Delete the selected annotation";
+    DeleteVisibleAnnotationCommand(MainWidget* w) : GenericVisibleAnnotationCommand(cname, w) {};
 
-    void perform_with_bookmark_selected() override {
-        widget->handle_delete_selected_bookmark();
+    void perform_with_visible_object_selected() override {
+        if (widget->selected_bookmark_index != -1) {
+            widget->handle_delete_selected_bookmark();
+        }
+        else if (widget->selected_highlight_index != -1) {
+            widget->handle_delete_selected_highlight();
+        }
     }
 };
 
@@ -3915,27 +3947,20 @@ public:
     }
 };
 
-class EditVisibleBookmarkCommand : public GenericVisibleBookmarkCommand {
+class EditVisibleAnnotationCommand : public GenericVisibleAnnotationCommand {
 
 public:
-    static inline const std::string cname = "edit_visible_bookmark";
+    static inline const std::string cname = "edit_visible_annotation";
     static inline const std::string hname = "";
-    EditVisibleBookmarkCommand(MainWidget* w) : GenericVisibleBookmarkCommand(cname, w) {};
+    EditVisibleAnnotationCommand(MainWidget* w) : GenericVisibleAnnotationCommand(cname, w) {};
 
-    void perform_with_bookmark_selected() override {
-        widget->execute_macro_if_enabled(L"edit_selected_bookmark");
-    }
-};
-
-class EditVisibleHighlightCommand : public GenericHighlightCommand {
-
-public:
-    static inline const std::string cname = "edit_visible_highlight";
-    static inline const std::string hname = "";
-    EditVisibleHighlightCommand(MainWidget* w) : GenericHighlightCommand(cname, w) {};
-
-    void perform_with_highlight_selected() override {
-        widget->execute_macro_if_enabled(L"edit_selected_highlight");
+    void perform_with_visible_object_selected() override {
+        if (widget->selected_bookmark_index != -1){
+            widget->execute_macro_if_enabled(L"edit_selected_bookmark");
+        }
+        else if (widget->selected_highlight_index != -1){
+            widget->execute_macro_if_enabled(L"edit_selected_highlight");
+        }
     }
 };
 
@@ -3959,7 +3984,7 @@ public:
     static inline const std::string hname = "";
     ChangeHighlightTypeCommand(MainWidget* w) : GenericHighlightCommand(cname, w) {};
 
-    void perform_with_highlight_selected() {
+    void perform_with_highlight_selected() override {
         widget->execute_macro_if_enabled(L"add_highlight");
     }
 
@@ -3972,7 +3997,7 @@ public:
     static inline const std::string hname = "";
     AddAnnotationToHighlightCommand(MainWidget* w) : GenericHighlightCommand(cname, w) {};
 
-    void perform_with_highlight_selected() {
+    void perform_with_highlight_selected() override {
         widget->execute_macro_if_enabled(L"add_annot_to_selected_highlight");
     }
 
@@ -7264,11 +7289,10 @@ CommandManager::CommandManager(ConfigManager* config_manager) {
     register_command<DeletePortalCommand>();
     register_command<DeleteBookmarkCommand>();
     register_command<DeleteHighlightCommand>();
-    register_command<EditVisibleHighlightCommand>();
-    register_command<DeleteVisibleBookmarkCommand>();
+    register_command<DeleteVisibleAnnotationCommand>();
     register_command<DeleteSelectedAnnotationCommand>();
     register_command<EditSelectedAnnotationCommand>();
-    register_command<EditVisibleBookmarkCommand>();
+    register_command<EditVisibleAnnotationCommand>();
     register_command<GotoPortalCommand>();
     register_command<GotoPortalCommand>();
     register_command<EditPortalCommand>();
