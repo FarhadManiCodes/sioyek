@@ -8168,9 +8168,16 @@ void InputHandler::get_commands_with_current_prefix_helper(InputParseTreeNode* n
     for (size_t i = 0; i < node->children.size(); i++) {
         prefix.push_back(node->children[i]);
         if (node->children[i]->is_final){
+            std::string full_name;
+            int index = 0;
             for (const auto& name : node->children[i]->name_){
-                map[name].push_back(get_key_string_from_tree_node_sequence(prefix));
+                full_name += name;
+                if (index < node->children[i]->name_.size() - 1){
+                    full_name += ";";
+                }
+                index++;
             }
+            map[full_name].push_back(get_key_string_from_tree_node_sequence(prefix));
         }
         else {
             get_commands_with_current_prefix_helper(node->children[i], prefix, map);
