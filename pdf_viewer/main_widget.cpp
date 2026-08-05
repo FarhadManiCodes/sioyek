@@ -6491,7 +6491,7 @@ MainWidget* MainWidget::handle_new_window() {
         checksummer,
         should_quit,
         pdf_renderer);
-   	new_widget->open_document(main_document_view->get_state().document_path);
+   	new_widget->open_document(main_document_view->get_state().document_path, std::nullopt, main_document_view->get_offset_y());
     new_widget->show();
     new_widget->apply_window_params_for_one_window_mode();
     new_widget->execute_macro_if_enabled(STARTUP_COMMANDS);
