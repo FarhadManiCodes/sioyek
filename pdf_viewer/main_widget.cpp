@@ -2382,8 +2382,7 @@ void MainWidget::update_command_hints_position() {
 
     const int outer_margin = 12;
     int available_width = std::max(main_window_width - (outer_margin * 2), 120);
-    int preferred_width = std::max(main_window_width / 3, 220);
-    command_hints_label->setMaximumWidth(std::min(available_width, preferred_width));
+    command_hints_label->setMaximumWidth(std::min(available_width, available_width));
     command_hints_label->adjustSize();
 
     int bottom_offset = outer_margin;
