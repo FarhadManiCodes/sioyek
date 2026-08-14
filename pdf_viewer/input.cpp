@@ -870,7 +870,9 @@ public:
         }
 
         for (auto& command : commands) {
-            *command->is_done = true;
+            if (command->is_done) {
+                *command->is_done = true;
+            }
         }
     }
 
@@ -8357,7 +8359,9 @@ void Command::pre_perform() {
 }
 
 void Command::on_cancel() {
-    *is_done = true;
+    if (is_done){
+        *is_done = true;
+    }
 }
 
 void Command::run() {
