@@ -863,6 +863,17 @@ public:
         }
     }
 
+    virtual void on_cancel() override{
+        int current_index = get_current_executing_command_index();
+        if (current_index != -1) {
+            commands[current_index]->on_cancel();
+        }
+
+        for (auto& command : commands) {
+            *command->is_done = true;
+        }
+    }
+
     std::string get_pending_name() {
         
         if (name.size() > 0 || commands.size() == 0) {
