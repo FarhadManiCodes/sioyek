@@ -14,17 +14,17 @@ Sioyek itself has **no direct X11 or Wayland code** — all display interaction 
 ### Locked-in build decisions
 
 - **MuPDF:** bundled submodule (`mupdf/`), built once with `znver4` flags and used for **both** sioyek (static link) **and** the user's system tools (`mutool` installed to `~/.local/bin/`). Don't install Arch's `mupdf` package — it would collide with the local one. mupdf's GUI viewers (`mupdf-gl`, `mupdf-x11`) are intentionally **not built** (no GLFW / X11 deps).
-- **Optional Qt modules dropped:** `TextToSpeech` only (small patch in `utils.cpp:4285` area + `CMakeLists.txt`). `QuickWidgets` + QML touch UI is kept compiled-in but dormant — TOUCH_MODE defaults false, the dead code costs nothing at runtime and dropping it would require a large multi-file patch to maintain across upstream merges.
+- **Optional Qt modules dropped:** `TextToSpeech` only, via the `SIOYEK_NO_TTS` CMake option (guards in `utils.h`, `utils.cpp`, `main_widget.cpp` + `CMakeLists.txt` — see `PERSONAL_PATCHES.md`). `QuickWidgets` + QML touch UI is kept compiled-in but dormant — TOUCH_MODE defaults false, the dead code costs nothing at runtime and dropping it would require a large multi-file patch to maintain across upstream merges.
 - **Network:** kept. `QLocalSocket`/`QLocalServer` (used by `RunGuard` for single-instance IPC) live in `Qt::Network` in Qt 6 — dropping the module would break multi-PDF window handoff. Outbound HTTP (paper download, JS extension API) is gated on user action; update check is config-off by default.
 - **Install layout:** Portable. Build artifacts and runtime assets all go under `~/.local/share/sioyek/`; a tiny wrapper script at `~/.local/bin/sioyek` exec's the binary; a hand-written `~/.local/share/applications/sioyek.desktop` handles desktop launcher integration. No `make install`, no `LINUX_STANDARD_PATHS`, no sudo. User config naturally goes to `~/.config/sioyek/`, user data to `~/.local/share/sioyek/`.
-- **Compiler flags:** `-march=znver4 -O3 -flto=auto -pipe -fno-plt` for both sioyek and mupdf. LDFLAGS: `-Wl,-O1 -Wl,--as-needed -flto=auto`.
+- **Compiler flags:** `-march=znver4 -O3 -flto=auto -pipe -fno-plt` for both sioyek and mupdf. Link: `-flto=auto` (via CXXFLAGS) plus `-Wl,-O2 -Wl,--as-needed` and `-fvisibility=hidden -fvisibility-inlines-hidden`, applied as `target_*_options(sioyek PRIVATE ...)` in `CMakeLists.txt` (not env `LDFLAGS`).
 - **Wayland:** runtime selection via `QT_QPA_PLATFORM=wayland` (or auto-detected when `qt6-wayland` is installed in a Wayland session).
 
 ### Required Arch packages
 
 `qt6-base qt6-svg qt6-declarative qt6-wayland harfbuzz sqlite zlib cmake gcc pkg-config`
 
-(Notably **not** installed: `qt6-speech` (dropped via patch), `mupdf` (bundled and installed locally).)
+(Notably **not** installed: `qt6-speech` (dropped via `SIOYEK_NO_TTS`), `mupdf` (bundled and installed locally).)
 
 ## Updating from upstream ("check the sioyek upstream and update")
 
@@ -82,11 +82,12 @@ cd mupdf && make USE_SYSTEM_HARFBUZZ=yes -j$(nproc) && cd ..
 
 ```bash
 cmake -B build-cmake -DCMAKE_BUILD_TYPE=Release \
-      -DCMAKE_CXX_FLAGS="-march=znver4 -O3 -flto=auto -pipe"
+      -DSIOYEK_NO_TTS=ON \
+      -DCMAKE_CXX_FLAGS="-march=znver4 -O3 -flto=auto -pipe -fno-plt"
 cmake --build build-cmake -j$(nproc)
 ```
 
-Note: `CMakeLists.txt` strips `-mno-direct-extern-access` from `CMAKE_CXX_FLAGS` on non-Apple Linux (a Qt 6 LTO interop fix — keep this behavior). It still expects bundled mupdf at `mupdf/build/release/libmupdf.a` and friends, **so step 1 of the qmake recipe (`cd mupdf && make ...`) still has to be run first** unless `CMakeLists.txt` is patched to use system mupdf.
+Note: `CMakeLists.txt` has a `string(REPLACE "-mno-direct-extern-access" "" CMAKE_CXX_FLAGS ...)` on non-Apple Linux (an old Qt 6 LTO-interop workaround). It is currently a **no-op** — Qt 6 injects that flag through its imported-target interface, not `CMAKE_CXX_FLAGS`, so the flag still shows in every compile line (`grep -c mno-direct build-cmake/compile_commands.json`). Harmless: LTO builds work with it present. It still expects bundled mupdf at `mupdf/build/release/libmupdf.a` and friends, **so step 1 of the qmake recipe (`cd mupdf && make ...`) has to be run first** if `mupdf/build/` is empty (see submodule state below) — unless `CMakeLists.txt` is patched to use system mupdf.
 
 ### Recommended custom-build flags
 
@@ -95,7 +96,7 @@ For a `znver4`-targeted release binary:
 ```bash
 export CFLAGS="-march=znver4 -O3 -flto=auto -pipe -fno-plt"
 export CXXFLAGS="$CFLAGS"
-export LDFLAGS="-Wl,-O1 -Wl,--as-needed -flto=auto"
+export LDFLAGS="-Wl,-O2 -Wl,--as-needed -flto=auto"
 ```
 
 Apply the same flags when building mupdf:
@@ -136,11 +137,13 @@ Or set it persistently in the desktop entry / shell env. If the desktop session 
 
 ### Optional Qt modules that can be dropped
 
-Both build files pull these in unconditionally. For a minimal build any of them can be excised if the feature isn't wanted:
+The qmake build pulls these in unconditionally; the CMake build already drops
+`TextToSpeech` behind `-DSIOYEK_NO_TTS=ON` (this checkout's default). For a
+minimal build any of the others can be excised if the feature isn't wanted:
 
 | Qt module | Source dependency | What you lose if removed |
 |-----------|-------------------|--------------------------|
-| `TextToSpeech` (`qt6-speech`) | `QtTextToSpeechHandler` in `utils.cpp` (~line 4285) | TTS / read-aloud commands |
+| `TextToSpeech` (`qt6-speech`) | `QtTextToSpeechHandler` in `utils.cpp` (guard at ~line 4294), `utils.h`, `main_widget.cpp` | TTS / read-aloud commands (**already dropped** here via `SIOYEK_NO_TTS`) |
 | `QuickWidgets` + QML (`qt6-declarative`) | `pdf_viewer/touchui/*` and `pdf_viewer/qml/` | All touch-mode UI (mobile/tablet overlays) |
 | `Svg` (`qt6-svg`) | Toolbar icons under `icons/*.svg`, `resources.qrc` | SVG toolbar icons |
 | `Network` | Update check, paper download | Auto-update notification, paper downloads |
@@ -157,7 +160,7 @@ A lot of what looks like a runtime dependency is actually **compiled into the bi
 - All `pdf_viewer/touchui/*.qml` — bundled
 - All `icons/*.svg` — bundled
 - `data/command_docs.json`, `data/config_docs.json` — bundled, loaded via `QFile(":/data/...")` in `main_widget.cpp:load_command_docs()` (~line 10600)
-- `data/embedding.npy`, `data/linear.npy` — **dead code**, bundled but `load_npy()` calls in `main.cpp` (~line 668–669) are commented out. Safe to drop from `resources.qrc` to shave ~12 KB.
+- `data/embedding.npy`, `data/linear.npy`, `resources/fonts/JetBrainsMono.ttf` — **removed** from `resources.qrc` on this branch (commit `ce3e3f9e`). The npy files were dead code (`load_npy()` in `main.cpp` is commented out); the font is now referenced by name (`global_font_family = "JetBrains Mono"`, installed system-wide).
 
 This means `shaders/` and `tutorial.pdf` copied next to the binary by `build_linux.sh` are mostly redundant — the resource fallback handles them. The loose `prefs.config` / `prefs_user.config` and `keys.config` / `keys_user.config` at runtime **are** still meaningful (they are the user-edit path).
 
@@ -177,14 +180,12 @@ When `LINUX_STANDARD_PATHS` is defined (non-portable installs), config files liv
 
 ### Minimum Qt version
 
-The source uses `#if QT_VERSION >= QT_VERSION_CHECK(6, 6, 0)` guards in a few places (`main_widget.cpp`). README says 6.7+; that's the working minimum.
+The source uses `#if QT_VERSION >= QT_VERSION_CHECK(6, 6, 0)` guards in a few places (`main_widget.cpp`). README says 6.7/6.8; that's the working minimum. This machine builds against Arch's `qt6-base` (currently 6.11.x). Upstream moved the build files to **C++20** (`CMAKE_CXX_STANDARD 20`) as of Sept 2026.
 
 ### Current submodule state of this checkout
 
-- `mupdf/` submodule: rev `d189cc13` (checked out, **not yet built** — `mupdf/build/` is empty)
-- `zlib/` submodule: rev `21767c6` (checked out)
-
-Both are present, so a first-time build needs to run the mupdf `make` step before compiling sioyek.
+- `mupdf/` submodule: rev `d189cc13` — checked out **and built** (`mupdf/build/release/libmupdf{,-third,-threads,-pkcs7}.a` present, built with the `znver4` flags). Rebuild only if the submodule pointer moves or the `.a` files go missing (see `UPDATING.md`).
+- `zlib/` submodule: rev `21767c6` (checked out).
 
 ## Helper scripts (not part of the build)
 

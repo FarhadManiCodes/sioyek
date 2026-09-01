@@ -9,17 +9,18 @@ git log --oneline upstream/development..personal --no-merges
 git diff --stat upstream/development...personal
 ```
 
-## The patches (8 commits)
+## The patches
 
-| Commit | What | Touches | Conflict risk |
-|--------|------|---------|---------------|
+Grouped by concern. Exact commit list: `git log --oneline upstream/development..personal --no-merges`.
+
+| Commit(s) | What | Touches | Conflict risk |
+|-----------|------|---------|---------------|
 | `9d9be81d` | `SQLite::SQLite3` → `SQLite3::SQLite3` target name | `CMakeLists.txt` | Low |
 | `07d2b9be` | `SIOYEK_NO_TTS` opt-in build flag (disables Qt TextToSpeech) | `CMakeLists.txt`, `main_widget.cpp`, `utils.cpp`, `utils.h` | **High** |
 | `e14066f9` | Don't force `LINUX_STANDARD_PATHS` (keep portable layout) | `CMakeLists.txt` | Medium |
 | `fe4ee634` | Link bundled mupdf + harfbuzz + freetype on Linux | `CMakeLists.txt` | **High** |
-| `ce3e3f9e` (+ `551f5ae5`) | Strip dead `.npy` + bundled `JetBrainsMono.ttf` from `resources.qrc`; use system "JetBrains Mono" font by name; `-fvisibility=hidden` + `-Wl,-O2 -Wl,--as-needed` (target-scoped since `551f5ae5`) | `CMakeLists.txt`, `pdf_viewer/main.cpp`, `resources.qrc` | **High** |
-| `ec778073` | Add `CLAUDE.md` | new file | None |
-| `0e08270a` | Add `UPDATING.md` + `PERSONAL_PATCHES.md` | new files | None |
+| `ce3e3f9e`, `551f5ae5` | Strip dead `.npy` + bundled `JetBrainsMono.ttf` from `resources.qrc`; use system "JetBrains Mono" font by name; `-fvisibility=hidden` + `-Wl,-O2 -Wl,--as-needed` as `target_*_options` (`551f5ae5` made them target-scoped so they actually apply) | `CMakeLists.txt`, `pdf_viewer/main.cpp`, `resources.qrc` | **High** |
+| `ec778073`, `0e08270a`, `a4e9ff3c`, … | Docs: `CLAUDE.md`, `UPDATING.md`, `PERSONAL_PATCHES.md` (+ ongoing edits) | new files | None |
 | `9cdc6826` | gitignore `/build-cmake/` | `.gitignore` | None |
 
 Real conflict surfaces: **`CMakeLists.txt`**, the three TTS source files
@@ -30,7 +31,7 @@ removals vs. upstream additions). `CLAUDE.md` / `UPDATING.md` /
 
 ## Conflict hotspots, file by file
 
-### `CMakeLists.txt` — the most fragile (4 separate edits)
+### `CMakeLists.txt` — the most fragile (5 separate edits)
 
 Upstream edits this file often, and the next-major `nice_highlights` branch adds
 an RHI/Vulkan backend + high-quality TTS, which will touch the very lines below.
@@ -56,6 +57,9 @@ an RHI/Vulkan backend + high-quality TTS, which will touch the very lines below.
 
 4. **`SQLite3::SQLite3`** — trivial rename; only conflicts if upstream also edits
    that line. Keep the `SQLite3::` form.
+
+5. **Extra optimization flags** in the Linux `else()` block — see the dedicated
+   section below (`CMakeLists.txt` extra flags — must stay target-scoped).
 
 ### `utils.h` — TTS class declarations  (**watch `nice_highlights`**)
 
