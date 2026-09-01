@@ -8,8 +8,17 @@ this file is just the recurring **pull → rebuild → install** runbook.
 ```bash
 cd ~/Installs/sioyek
 git fetch upstream
+git log --oneline --no-merges HEAD..upstream/development   # review what's coming
 git merge upstream/development          # onto the 'personal' branch
+
+# verify the personal patches survived the merge (see PERSONAL_PATCHES.md):
+grep -n "SIOYEK_NO_TTS\|SQLite3::SQLite3\|mupdf/build/release\|target_link_options" CMakeLists.txt
+grep -n "SIOYEK_NO_TTS" pdf_viewer/utils.h pdf_viewer/utils.cpp pdf_viewer/main_widget.cpp
+grep -n 'global_font_family = "JetBrains Mono"' pdf_viewer/main.cpp
+grep -n "embedding.npy\|JetBrainsMono" resources.qrc      # expect NO matches
+
 cmake --build build-cmake -j$(nproc)    # incremental; reconfigures itself if CMakeLists changed
+grep -m1 -o -- "-march=znver4 -O3 -flto=auto[^\"]*" build-cmake/compile_commands.json  # flags sanity
 cp build-cmake/sioyek ~/.local/share/sioyek/sioyek
 ```
 

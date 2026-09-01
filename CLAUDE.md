@@ -26,6 +26,41 @@ Sioyek itself has **no direct X11 or Wayland code** — all display interaction 
 
 (Notably **not** installed: `qt6-speech` (dropped via patch), `mupdf` (bundled and installed locally).)
 
+## Updating from upstream ("check the sioyek upstream and update")
+
+Authoritative runbook: **`UPDATING.md`** (pull → rebuild → install steps) and
+**`PERSONAL_PATCHES.md`** (what this `personal` branch changes on top of
+`upstream/development` and where merges conflict). Read both before starting.
+
+Short version:
+
+```bash
+git fetch upstream
+git log --oneline --no-merges HEAD..upstream/development   # review what's new
+git merge upstream/development                             # onto 'personal'
+```
+
+Then **verify every personal patch survived** (see `PERSONAL_PATCHES.md` for the
+full list) — quick check:
+
+```bash
+grep -n "SIOYEK_NO_TTS\|SQLite3::SQLite3\|mupdf/build/release\|LINUX_STANDARD_PATHS" CMakeLists.txt
+grep -n "SIOYEK_NO_TTS" pdf_viewer/utils.h pdf_viewer/utils.cpp pdf_viewer/main_widget.cpp
+grep -n 'global_font_family = "JetBrains Mono"' pdf_viewer/main.cpp
+grep -n "embedding.npy\|JetBrainsMono" resources.qrc   # expect NO matches (we removed them)
+```
+
+Rebuild + install (no MuPDF rebuild unless the submodule pointer moved):
+
+```bash
+cmake --build build-cmake -j$(nproc)
+cp build-cmake/sioyek ~/.local/share/sioyek/sioyek
+```
+
+Sanity: `ldd ~/.local/share/sioyek/sioyek | grep -i speech` → nothing;
+`~/.local/bin/sioyek --help` runs. Confirm the compile line still carries
+`-march=znver4 -O3 -flto=auto` (`grep -m1 march build-cmake/compile_commands.json`).
+
 ## Build System
 
 Sioyek ships **two parallel build systems**: qmake (`pdf_viewer_build_config.pro`, used by `build_linux.sh`) and CMake (`CMakeLists.txt`). For a custom local build, CMake is preferred — it has `compile_commands.json` export and is easier to drive with custom `CXXFLAGS`. qmake is what upstream CI uses.

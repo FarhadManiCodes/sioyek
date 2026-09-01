@@ -9,7 +9,7 @@ git log --oneline upstream/development..personal --no-merges
 git diff --stat upstream/development...personal
 ```
 
-## The patches (6 commits)
+## The patches (8 commits)
 
 | Commit | What | Touches | Conflict risk |
 |--------|------|---------|---------------|
@@ -17,11 +17,16 @@ git diff --stat upstream/development...personal
 | `07d2b9be` | `SIOYEK_NO_TTS` opt-in build flag (disables Qt TextToSpeech) | `CMakeLists.txt`, `main_widget.cpp`, `utils.cpp`, `utils.h` | **High** |
 | `e14066f9` | Don't force `LINUX_STANDARD_PATHS` (keep portable layout) | `CMakeLists.txt` | Medium |
 | `fe4ee634` | Link bundled mupdf + harfbuzz + freetype on Linux | `CMakeLists.txt` | **High** |
+| `ce3e3f9e` (+ `551f5ae5`) | Strip dead `.npy` + bundled `JetBrainsMono.ttf` from `resources.qrc`; use system "JetBrains Mono" font by name; `-fvisibility=hidden` + `-Wl,-O2 -Wl,--as-needed` (target-scoped since `551f5ae5`) | `CMakeLists.txt`, `pdf_viewer/main.cpp`, `resources.qrc` | **High** |
 | `ec778073` | Add `CLAUDE.md` | new file | None |
+| `0e08270a` | Add `UPDATING.md` + `PERSONAL_PATCHES.md` | new files | None |
 | `9cdc6826` | gitignore `/build-cmake/` | `.gitignore` | None |
 
-Only **`CMakeLists.txt`** and the three TTS source files are real conflict
-surfaces. `CLAUDE.md` / `.gitignore` are additive and never conflict.
+Real conflict surfaces: **`CMakeLists.txt`**, the three TTS source files
+(`utils.h`, `utils.cpp`, `main_widget.cpp`), **`pdf_viewer/main.cpp`** (font
+line, inside `main()` which upstream edits often), and **`resources.qrc`** (our
+removals vs. upstream additions). `CLAUDE.md` / `UPDATING.md` /
+`PERSONAL_PATCHES.md` / `.gitignore` are additive and never conflict.
 
 ## Conflict hotspots, file by file
 
@@ -69,6 +74,34 @@ SIOYEK_NO_TTS ... #endif`. Same story as the header.
 
 > Note: the ligature `stable_sort` fix in `utils.cpp` is **upstream's**, not
 > yours — don't mistake it for a personal patch.
+
+### `pdf_viewer/main.cpp` — system font  (commit `ce3e3f9e`)
+
+Upstream loads a bundled `:/resources/fonts/JetBrainsMono.ttf` via
+`QFontDatabase::addApplicationFont(...)` at the top of `main()`. You replaced
+that whole block with `global_font_family = "JetBrains Mono";` (the font is
+installed system-wide). Upstream touches `main()` often, so expect the
+surrounding lines to move.
+*Resolve:* keep the one-liner; drop any re-added font-file loading. If upstream
+switches to a *different* bundled font you may want the new name instead.
+
+### `resources.qrc` — stripped assets  (commit `ce3e3f9e`)
+
+You removed `data/embedding.npy`, `data/linear.npy` (dead code — `load_npy()` is
+commented out in `main.cpp`) and `resources/fonts/JetBrainsMono.ttf`.
+*Resolve:* keep them removed. If a merge re-adds them, delete again. If upstream
+adds *new* `<file>` entries, keep those.
+
+### `CMakeLists.txt` extra flags — must stay target-scoped  (commits `ce3e3f9e`, `551f5ae5`)
+
+`-fvisibility=hidden -fvisibility-inlines-hidden` and `-Wl,-O2 -Wl,--as-needed`
+live in the Linux `else()` branch as `target_compile_options(sioyek PRIVATE ...)`
+/ `target_link_options(sioyek PRIVATE ...)`. They were originally written as
+directory-level `add_compile_options` / `add_link_options`, which silently do
+nothing because `qt_add_executable(sioyek)` is defined ~170 lines earlier —
+`551f5ae5` fixed that.
+*Resolve:* if a merge reverts them to `add_*_options`, switch back to the
+`target_*_options(sioyek PRIVATE ...)` form.
 
 ### `main_widget.cpp` — TTS factory + include
 
