@@ -209,8 +209,10 @@ if(APPLE)
   )
 else()
   string(REPLACE "-mno-direct-extern-access" "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
-  add_compile_options(-fvisibility=hidden -fvisibility-inlines-hidden)
-  add_link_options(-Wl,-O2)
+  # Must be target-scoped: directory-level add_*_options() only affect targets
+  # created after the call, but qt_add_executable(sioyek) is defined far above.
+  target_compile_options(sioyek PRIVATE -fvisibility=hidden -fvisibility-inlines-hidden)
+  target_link_options(sioyek PRIVATE -Wl,-O2 -Wl,--as-needed)
   target_link_libraries(sioyek PRIVATE
       -L${CMAKE_CURRENT_SOURCE_DIR}/mupdf/build/release
       -lmupdf
