@@ -1,4 +1,4 @@
-﻿// deduplicate database code
+// deduplicate database code
 // make sure jsons exported by previous sioyek versions can be imported
 // maybe: use a better method to handle deletion of canceled download portals
 // change find_closest_*_index and argminf to use the fact that the list is sorted and speed up the search (not important if there are not a ridiculous amount of highlight/bookmarks)
@@ -13,6 +13,7 @@
 // smartviewcandidates are not filled when right clicking on a link?
 
 
+#include "coordinates.h"
 #include <iostream>
 #include <vector>
 #include <string>
@@ -221,6 +222,7 @@ extern bool KEYBOARD_SELECT_INCLUSIVE;
 extern bool SHOW_COMMAND_HINTS;
 extern bool RESTORE_ALL_WINDOWS_ON_STARTUP;
 
+extern bool FREE_TOUCHPAD_MOVEMENT;
 extern bool SIMPLIFY_FREEHAND_DRAWINGS;
 extern bool SHOW_RIGHT_CLICK_CONTEXT_MENU;
 extern std::wstring CONTEXT_MENU_ITEMS;
@@ -313,7 +315,8 @@ void set_filtered_select_menu(MainWidget* main_widget, bool fuzzy, bool multilin
     int selected_index,
     std::function<void(T*)> on_select,
     std::function<void(T*)> on_delete,
-    std::function<void(T*)> on_edit = nullptr
+    std::function<void(T*)> on_edit = nullptr,
+    bool last_column_fixed = false
 ) {
     if (columns.size() > 1) {
 
@@ -356,7 +359,7 @@ void set_filtered_select_menu(MainWidget* main_widget, bool fuzzy, bool multilin
                     if (val && on_delete) {
                         on_delete(val);
                     }
-                });
+                }, last_column_fixed);
             w->set_filter_column_index(-1);
             if (on_edit) {
                 w->set_on_edit_function(on_edit);
@@ -888,7 +891,7 @@ void MainWidget::closeEvent(QCloseEvent* close_event) {
     handle_close_event();
 }
 
-MainWidget::MainWidget(MainWidget* other) : MainWidget(other->mupdf_context, other->db_manager, other->document_manager, other->config_manager, other->command_manager, other->input_handler, other->checksummer, other->should_quit) {
+MainWidget::MainWidget(MainWidget* other) : MainWidget(other->mupdf_context, other->db_manager, other->document_manager, other->config_manager, other->command_manager, other->input_handler, other->checksummer, other->should_quit, other->pdf_renderer) {
 
 }
 
@@ -900,6 +903,7 @@ MainWidget::MainWidget(fz_context* mupdf_context,
     InputHandler* input_handler,
     CachedChecksummer* checksummer,
     bool* should_quit_ptr,
+    PdfRenderer* pdf_renderer,
     QWidget* parent) :
 #ifdef SIOYEK_ANDROID
     QQuickWidget(parent),
@@ -931,9 +935,7 @@ MainWidget::MainWidget(fz_context* mupdf_context,
     central_widget->setMouseTracking(true);
 
     inverse_search_command = INVERSE_SEARCH_COMMAND;
-    pdf_renderer = new PdfRenderer(4, should_quit_ptr, mupdf_context);
-    pdf_renderer->set_num_cached_pages(NUM_CACHED_PAGES);
-    pdf_renderer->start_threads();
+    this->pdf_renderer = pdf_renderer;
 
 
     //scratchpad = new ScratchPad();
@@ -1215,7 +1217,7 @@ MainWidget::MainWidget(fz_context* mupdf_context,
 
         });
 
-    connect(validation_interval_timer, &QTimer::timeout, [&]() {
+    connect(validation_interval_timer, &QTimer::timeout, this, [this]() {
 
         if (PERSISTANCE_PERIOD > 0) {
             QDateTime now = QDateTime::currentDateTime();
@@ -1281,9 +1283,14 @@ MainWidget::MainWidget(fz_context* mupdf_context,
 
                     if (is_doc_valid(this->mupdf_context, utf8_encode(doc->get_path()))) {
                         doc->reload();
-                        pdf_renderer->clear_cache();
-                        main_document_view->fill_cached_virtual_rects(true);
-                        invalidate_render();
+                        // update all the main_widgets that are using this document
+                        for (auto window : windows) {
+                            if (window->doc() == doc) {
+                                window->pdf_renderer->clear_cache();
+                                window->main_document_view->fill_cached_virtual_rects(true);
+                                window->invalidate_render();
+                            }
+                        }
                     }
                 }
             }
@@ -1379,11 +1386,6 @@ MainWidget::~MainWidget() {
     }
     validation_interval_timer->stop();
     remove_self_from_windows();
-
-    if (windows.size() == 0) {
-        *should_quit = true;
-        pdf_renderer->join_threads();
-    }
 
     if (tts) {
         delete tts;
@@ -2387,8 +2389,7 @@ void MainWidget::update_command_hints_position() {
 
     const int outer_margin = 12;
     int available_width = std::max(main_window_width - (outer_margin * 2), 120);
-    int preferred_width = std::max(main_window_width / 3, 220);
-    command_hints_label->setMaximumWidth(std::min(available_width, preferred_width));
+    command_hints_label->setMaximumWidth(std::min(available_width, available_width));
     command_hints_label->adjustSize();
 
     int bottom_offset = outer_margin;
@@ -3385,11 +3386,13 @@ void MainWidget::wheelEvent(QWheelEvent* wevent) {
     int num_repeats = abs(wevent->angleDelta().y() / 120);
     float num_repeats_f_y = abs(wevent->angleDelta().y() / 120.0);
     float num_repeats_f_x = abs(wevent->angleDelta().x() / 120.0);
-    if (std::abs(num_repeats_f_x) > std::abs(num_repeats_f_y)){
-        num_repeats_f_y = 0;
-    }
-    else{
-        num_repeats_f_x = 0;
+    if (!FREE_TOUCHPAD_MOVEMENT){
+        if (std::abs(num_repeats_f_x) > std::abs(num_repeats_f_y)){
+            num_repeats_f_y = 0;
+        }
+        else{
+            num_repeats_f_x = 0;
+        }
     }
 #else
     int num_repeats = abs(wevent->delta() / 120);
@@ -6105,7 +6108,7 @@ void MainWidget::handle_goto_bookmark_global() {
             BookMark bm = desc_bm_pair.second;
             std::wstring file_name = Path(path.value()).filename().value_or(L"");
             descs.push_back(ITEM_LIST_PREFIX + L" " + bm.description);
-            file_names.push_back(truncate_string(file_name, 50));
+            file_names.push_back(file_name);
             book_states.push_back({ path.value(), bm.get_y_offset(), bm.uuid});
         }
     }
@@ -6119,8 +6122,9 @@ void MainWidget::handle_goto_bookmark_global() {
         },
         [&](BookState* book_state) {
             db_manager->delete_bookmark(book_state->uuid);
-        }
-        );
+        },
+        nullptr,
+        true);
     show_current_widget();
 }
 
@@ -6234,7 +6238,7 @@ void MainWidget::handle_goto_highlight_global() {
                 has_annots = true;
             }
 
-            file_names.push_back(truncate_string(file_name, 50));
+            file_names.push_back(file_name);
 
             book_states.push_back({ path.value(), hl.selection_begin.y, hl.uuid });
 
@@ -6263,7 +6267,9 @@ void MainWidget::handle_goto_highlight_global() {
             }
         }, [&](BookState* state) {
             db_manager->delete_highlight(state->uuid);
-        });
+        },
+        nullptr,
+        true);
 
     show_current_widget();
 }
@@ -6489,8 +6495,9 @@ MainWidget* MainWidget::handle_new_window() {
         command_manager,
         input_handler,
         checksummer,
-        should_quit);
-   	new_widget->open_document(main_document_view->get_state().document_path);
+        should_quit,
+        pdf_renderer);
+   	new_widget->open_document(main_document_view->get_state().document_path, std::nullopt, main_document_view->get_offset_y());
     new_widget->show();
     new_widget->apply_window_params_for_one_window_mode();
     new_widget->execute_macro_if_enabled(STARTUP_COMMANDS);
@@ -7602,6 +7609,7 @@ void MainWidget::unselect_last_char(){
 }
 
 void MainWidget::handle_debug_command() {
+    
 }
 
 void MainWidget::export_command_names(std::wstring file_path){
@@ -11098,33 +11106,49 @@ void MainWidget::set_selected_bookmark_index(int index) {
 }
 
 void MainWidget::handle_highlight_tags_pre_perform(const std::vector<int>& visible_highlight_indices) {
-    const std::vector<Highlight>& highlights = doc()->get_highlights();
-
-    std::vector<DocumentRect> highlight_rects;
+    std::vector<SioyekVisibleObjectIndex> visible_object_indices;
     for (auto ind : visible_highlight_indices) {
-        const Highlight& highlight = highlights[ind];
-        if (highlight.highlight_rects.size() > 0) {
-            highlight_rects.push_back(highlight.highlight_rects[0].to_document(doc()));
-        }
+        visible_object_indices.push_back(SioyekVisibleObjectIndex{ SioyekVisibleObjectType::Highlight, ind });
     }
-
-    opengl_widget->set_highlight_words(highlight_rects);
-    opengl_widget->set_should_highlight_words(true);
+    return handle_visible_objects_tags_pre_perform(visible_object_indices);
 
 }
 
 void MainWidget::handle_visible_bookmark_tags_pre_perform(const std::vector<int>& visible_bookmark_indices){
+    std::vector<SioyekVisibleObjectIndex> visible_object_indices;
+    for (auto ind : visible_bookmark_indices) {
+        visible_object_indices.push_back(SioyekVisibleObjectIndex{ SioyekVisibleObjectType::Bookmark, ind });
+    }
+    return handle_visible_objects_tags_pre_perform(visible_object_indices);
+}
+
+void MainWidget::handle_visible_objects_tags_pre_perform(const std::vector<SioyekVisibleObjectIndex>& visible_object_indices) {
     const std::vector<BookMark>& bookmarks = doc()->get_bookmarks();
 
-    std::vector<DocumentRect> bookmark_rects;
-    for (auto ind : visible_bookmark_indices) {
-        const BookMark& bookmark = bookmarks[ind];
-        AbsoluteRect bookmark_rect = bookmark.get_rectangle();
-        bookmark_rects.push_back(bookmark_rect.to_document(doc()));
+    std::vector<DocumentRect> annotation_rects;
+    for (auto obj_index : visible_object_indices) {
+        if (obj_index.type == SioyekVisibleObjectType::Bookmark) {
+            const BookMark& bookmark = bookmarks[obj_index.index];
+            AbsoluteRect bookmark_rect = bookmark.get_rectangle();
+            annotation_rects.push_back(bookmark_rect.to_document(doc()));
+        }
+        else if (obj_index.type == SioyekVisibleObjectType::Highlight) {
+            const Highlight& highlight = doc()->get_highlights()[obj_index.index];
+            if (highlight.highlight_rects.size() > 0) {
+                annotation_rects.push_back(highlight.highlight_rects[0].to_document(doc()));
+            }
+            else{
+                DocumentRect empty_rect;
+                empty_rect.page = 0;
+                empty_rect.rect = { 0, 0, 0, 0 };
+                annotation_rects.push_back(empty_rect);
+            }
+        }
     }
 
-    opengl_widget->set_highlight_words(bookmark_rects);
+    opengl_widget->set_highlight_words(annotation_rects);
     opengl_widget->set_should_highlight_words(true);
+
 }
 
 void MainWidget::clear_keyboard_select_highlights() {
@@ -11687,8 +11711,8 @@ QMenuBar* MainWidget::create_main_menu_bar(){
             new MenuNode{ "add_bookmark", "", {} },
             new MenuNode{ "add_marked_bookmark", "", {} },
             new MenuNode{ "add_freetext_bookmark", "", {} },
-            new MenuNode{ "delete_visible_bookmark", "", {} },
-            new MenuNode{ "edit_visible_bookmark", "Edit the selected bookmark", {} },
+            new MenuNode{ "delete_visible_annotation", "", {} },
+            new MenuNode{ "edit_visible_annotation", "Edit the selected annotation", {} },
         }
     };
 
@@ -11709,7 +11733,6 @@ QMenuBar* MainWidget::create_main_menu_bar(){
             new MenuNode{ "add_highlight", "", {} },
             new MenuNode{ "add_annot_to_selected_highlight", "", {} },
             new MenuNode{ "add_highlight_with_current_type", "", {} },
-            new MenuNode{ "edit_visible_highlight", "Edit the selected highlight", {} },
             new MenuNode{ "delete_highlight", "", {} },
         }
     };

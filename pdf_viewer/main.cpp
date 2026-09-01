@@ -138,7 +138,8 @@ extern std::wstring SEARCH_URLS[26];
 extern std::wstring PAPERS_FOLDER_PATH;
 extern bool NO_AUTO_CONFIG;
 extern bool DEFAULT_DARK_MODE;
-
+extern int NUM_CACHED_PAGES;
+extern bool DISABLE_CURSOR_BLINKING;
 
 std::wstring strip_uri(std::wstring pdf_file_name, std::optional<int>* out_page) {
 
@@ -232,6 +233,11 @@ void configure_paths() {
 
 
 #ifdef Q_OS_MACOS
+    Path mac_resources_path = parent_path.slash(L"..").slash(L"Resources");
+    shader_path = mac_resources_path.slash(L"shaders");
+    default_config_path = mac_resources_path.slash(L"prefs.config");
+    default_keys_path = mac_resources_path.slash(L"keys.config");
+    tutorial_path = mac_resources_path.slash(L"tutorial.pdf");
     Path mac_home_path(QDir::homePath().toStdWString());
     Path mac_standard_config_path = mac_home_path.slash(L".config").slash(L"sioyek");
     user_keys_paths.push_back(mac_standard_config_path.slash(L"keys_user.config"));
@@ -306,9 +312,11 @@ void configure_paths() {
 
     standard_data_path.create_directories();
 
+#ifndef Q_OS_MACOS
     default_config_path = parent_path.slash(L"prefs.config");
     default_keys_path = parent_path.slash(L"keys.config");
     tutorial_path = parent_path.slash(L"tutorial.pdf");
+#endif
 
 #if defined(NON_PORTABLE) || defined(Q_OS_MACOS)
     user_config_paths.push_back(standard_data_path.slash(L"prefs_user.config"));
@@ -841,6 +849,10 @@ int main(int argc, char* args[]) {
 
     bool quit = false;
 
+    PdfRenderer* pdf_renderer = new PdfRenderer(4, &quit, mupdf_context);
+    pdf_renderer->set_num_cached_pages(NUM_CACHED_PAGES);
+    pdf_renderer->start_threads();
+
     qDebug() << "SIOYEK";
     InputHandler input_handler(default_keys_path, user_keys_paths, command_manager);
 
@@ -859,7 +871,7 @@ int main(int argc, char* args[]) {
     QQuickWindow::setGraphicsApi(QSGRendererInterface::OpenGL);
 
 
-    MainWidget* main_widget = new MainWidget(mupdf_context, &db_manager, &document_manager, &config_manager, command_manager, &input_handler, &checksummer, &quit);
+    MainWidget* main_widget = new MainWidget(mupdf_context, &db_manager, &document_manager, &config_manager, command_manager, &input_handler, &checksummer, &quit, pdf_renderer);
     windows.push_back(main_widget);
 
 #ifndef SIOYEK_ANDROID
@@ -951,6 +963,9 @@ int main(int argc, char* args[]) {
         check_for_updates(main_widget, APPLICATION_VERSION);
     }
 
+    if (DISABLE_CURSOR_BLINKING){
+        QApplication::setCursorFlashTime(0);
+    }
     app.exec();
 
     quit = true;
@@ -962,6 +977,9 @@ int main(int argc, char* args[]) {
     for (size_t i = 0; i < windows_to_delete.size(); i++) {
         delete windows_to_delete[i];
     }
+
+    pdf_renderer->join_threads();
+    delete pdf_renderer;
 
     return 0;
 }
