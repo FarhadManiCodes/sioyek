@@ -16,7 +16,6 @@ public:
 
 public slots:
     void handleLightApplicationBackground();
-    void handleDarkApplicationBackground();
     void handleCustomApplicationBackground();
     void handleCustomPageText();
     void handleCustomPageBackground();

@@ -102,6 +102,8 @@ public:
         Normal,
         Dark,
         Custom,
+        // Internal forced palette used by inverted_preserved_image_colors.
+        Inverted,
         None
     };
 

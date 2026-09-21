@@ -9,7 +9,6 @@
 
 
 extern float BACKGROUND_COLOR[3];
-extern float DARK_MODE_BACKGROUND_COLOR[3];
 extern float CUSTOM_COLOR_MODE_EMPTY_BACKGROUND_COLOR[3];
 extern float CUSTOM_BACKGROUND_COLOR[3];
 extern float CUSTOM_TEXT_COLOR[3];
@@ -49,12 +48,6 @@ TouchSettings::TouchSettings(MainWidget* parent) : QWidget(parent) {
         SIGNAL(lightApplicationBackgroundClicked()),
         this,
         SLOT(handleLightApplicationBackground()));
-
-    QObject::connect(
-        dynamic_cast<QObject*>(quick_widget->rootObject()),
-        SIGNAL(darkApplicationBackgroundClicked()),
-        this,
-        SLOT(handleDarkApplicationBackground()));
 
     QObject::connect(
         dynamic_cast<QObject*>(quick_widget->rootObject()),
@@ -132,10 +125,6 @@ TouchSettings::TouchSettings(MainWidget* parent) : QWidget(parent) {
 
 void TouchSettings::handleLightApplicationBackground() {
     show_dialog_for_color_n(3, BACKGROUND_COLOR);
-}
-
-void TouchSettings::handleDarkApplicationBackground() {
-    show_dialog_for_color_n(3, DARK_MODE_BACKGROUND_COLOR);
 }
 
 void TouchSettings::handleCustomApplicationBackground() {
@@ -277,4 +266,3 @@ void TouchSettings::handleAllConfigs() {
 void TouchSettings::handleRestoreDefaults() {
     main_widget->restore_default_config();
 }
-

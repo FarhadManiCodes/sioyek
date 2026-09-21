@@ -15,7 +15,6 @@ Rectangle{
     id: root
 
     signal lightApplicationBackgroundClicked();
-    signal darkApplicationBackgroundClicked();
     signal customApplicationBackgroundClicked();
     signal customPageTextClicked();
     signal customPageBackgroundClicked();
@@ -139,7 +138,7 @@ Rectangle{
                 }
 
                 TouchButtonGroup{
-                    buttons: ["Light", "Dark", "Custom"]
+                    buttons: ["Light", "Custom"]
                     anchors.bottom: parent.bottom
                     anchors.top: label0.bottom
                     anchors.left: parent.left
@@ -150,9 +149,6 @@ Rectangle{
                             lightApplicationBackgroundClicked();
                         }
                         if (index == 1){
-                            darkApplicationBackgroundClicked();
-                        }
-                        if (index == 2){
                             customApplicationBackgroundClicked();
                         }
                     }

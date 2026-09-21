@@ -28,7 +28,6 @@ extern bool DEBUG_SMOOTH_FREEHAND_DRAWINGS;
 extern Path shader_path;
 extern float GAMMA;
 extern float BACKGROUND_COLOR[3];
-extern float DARK_MODE_BACKGROUND_COLOR[3];
 extern float CUSTOM_COLOR_MODE_EMPTY_BACKGROUND_COLOR[3];
 extern float DARK_MODE_CONTRAST;
 extern float ZOOM_INC_FACTOR;
@@ -1246,7 +1245,9 @@ void PdfViewOpenGLWidget::render_page(int page_number, bool in_overview, ColorPa
             if (!image_rects.empty()) {
                 ColorPalette target_palette = ColorPalette::Normal;
                 if (color_mode == ColorPalette::Custom && INVERTED_PRESERVED_IMAGE_COLORS) {
-                    target_palette = ColorPalette::Dark;
+                    // Preserve Custom mode's optional legacy image inversion. Dark mode
+                    // always redraws preserved image regions without recoloring them.
+                    target_palette = ColorPalette::Inverted;
                 }
 
                 if (in_overview) {
@@ -2351,11 +2352,13 @@ void PdfViewOpenGLWidget::toggle_custom_color_mode() {
 
 void PdfViewOpenGLWidget::bind_program(ColorPalette forced_palette) {
     ColorPalette mode = forced_palette == None ? color_mode : forced_palette;
-    if (mode == ColorPalette::Dark) {
+    if (mode == ColorPalette::Inverted) {
+        // This legacy shader is only used for inverted preserved images in Custom mode.
+        // dark_mode_contrast no longer affects ColorPalette::Dark.
         glUseProgram(shared_gl_objects.rendered_dark_program);
         glUniform1f(shared_gl_objects.dark_mode_contrast_uniform_location, DARK_MODE_CONTRAST);
     }
-    else if (mode == ColorPalette::Custom) {
+    else if (mode == ColorPalette::Dark || mode == ColorPalette::Custom) {
         glUseProgram(shared_gl_objects.custom_color_program);
         float transform_matrix[16];
         get_custom_color_transform_matrix(transform_matrix);
@@ -2460,9 +2463,6 @@ void PdfViewOpenGLWidget::render_transparent_background() {
     float background_color[4] = { 1.0f, 1.0f, 1.0f, 1 - FASTREAD_OPACITY };
 
     if (this->color_mode == ColorPalette::Normal) {
-    }
-    else if (this->color_mode == ColorPalette::Dark) {
-        background_color[0] = background_color[1] = background_color[2] = 0;
     }
     else {
         background_color[0] = CUSTOM_BACKGROUND_COLOR[0];
@@ -2802,9 +2802,6 @@ void PdfViewOpenGLWidget::get_background_color(float out_background[3]) {
 
     if (this->color_mode == ColorPalette::Normal) {
         out_background[0] = out_background[1] = out_background[2] = 1;
-    }
-    else if (this->color_mode == ColorPalette::Dark) {
-        out_background[0] = out_background[1] = out_background[2] = 0;
     }
     else {
         out_background[0] = CUSTOM_BACKGROUND_COLOR[0];
@@ -3558,18 +3555,7 @@ void PdfViewOpenGLWidget::get_color_for_current_mode(const float* input_color, f
         return;
     }
 
-    if (color_mode == ColorPalette::Dark) {
-        float inverted_color[3];
-        inverted_color[0] = (0.5f - input_color[0]) * DARK_MODE_CONTRAST + 0.5f;
-        inverted_color[1] = (0.5f - input_color[1]) * DARK_MODE_CONTRAST + 0.5f;
-        inverted_color[2] = (0.5f - input_color[2]) * DARK_MODE_CONTRAST + 0.5f;
-        float hsv_color[3];
-        rgb2hsv(inverted_color, hsv_color);
-        float new_hue = fmod(hsv_color[0] + 0.5f, 1.0f);
-        hsv_color[0] = new_hue;
-        hsv2rgb(hsv_color, output_color);
-    }
-    else if (color_mode == ColorPalette::Custom) {
+    if (color_mode == ColorPalette::Dark || color_mode == ColorPalette::Custom) {
         float transform_matrix[16];
         float input_vector[4];
         float output_vector[4];
@@ -3786,7 +3772,7 @@ bool PdfViewOpenGLWidget::can_use_cached_scratchpad_framebuffer() {
 
 void PdfViewOpenGLWidget::clear_background_color() {
     if (color_mode == ColorPalette::Dark) {
-        glClearColor(DARK_MODE_BACKGROUND_COLOR[0], DARK_MODE_BACKGROUND_COLOR[1], DARK_MODE_BACKGROUND_COLOR[2], 1.0f);
+        glClearColor(CUSTOM_BACKGROUND_COLOR[0], CUSTOM_BACKGROUND_COLOR[1], CUSTOM_BACKGROUND_COLOR[2], 1.0f);
     }
     else if (color_mode == ColorPalette::Custom) {
         glClearColor(CUSTOM_COLOR_MODE_EMPTY_BACKGROUND_COLOR[0], CUSTOM_COLOR_MODE_EMPTY_BACKGROUND_COLOR[1], CUSTOM_COLOR_MODE_EMPTY_BACKGROUND_COLOR[2], 1.0f);
