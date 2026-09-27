@@ -14,15 +14,15 @@ Sioyek itself has **no direct X11 or Wayland code** — all display interaction 
 ### Locked-in build decisions
 
 - **MuPDF:** bundled submodule (`mupdf/`), built once with `znver4` flags and used for **both** sioyek (static link) **and** the user's system tools (`mutool` installed to `~/.local/bin/`). Don't install Arch's `mupdf` package — it would collide with the local one. mupdf's GUI viewers (`mupdf-gl`, `mupdf-x11`) are intentionally **not built** (no GLFW / X11 deps).
-- **Optional Qt modules dropped:** `TextToSpeech` only, via the `SIOYEK_NO_TTS` CMake option (guards in `utils.h`, `utils.cpp`, `main_widget.cpp` + `CMakeLists.txt` — see `PERSONAL_PATCHES.md`). `QuickWidgets` + QML touch UI is kept compiled-in but dormant — TOUCH_MODE defaults false, the dead code costs nothing at runtime and dropping it would require a large multi-file patch to maintain across upstream merges.
+- **Optional Qt modules dropped:** `TextToSpeech` only, via the `SIOYEK_NO_TTS` CMake option (guards in `utils.h`, `utils.cpp`, `main_widget.cpp` + `CMakeLists.txt` — see `PERSONAL_PATCHES.md`). `QuickWidgets` + QML touch UI is kept compiled-in; TOUCH_MODE defaults false on desktop, but the Qt Quick/QML libraries remain linked and may add startup and memory overhead. Dropping them would require a large multi-file patch to maintain across upstream merges.
 - **Network:** kept. `QLocalSocket`/`QLocalServer` (used by `RunGuard` for single-instance IPC) live in `Qt::Network` in Qt 6 — dropping the module would break multi-PDF window handoff. Outbound HTTP (paper download, JS extension API) is gated on user action; update check is config-off by default.
 - **Install layout:** Portable. Build artifacts and runtime assets all go under `~/.local/share/sioyek/`; a tiny wrapper script at `~/.local/bin/sioyek` exec's the binary; a hand-written `~/.local/share/applications/sioyek.desktop` handles desktop launcher integration. No `make install`, no `LINUX_STANDARD_PATHS`, no sudo. User config naturally goes to `~/.config/sioyek/`, user data to `~/.local/share/sioyek/`.
 - **Compiler flags:** `-march=znver4 -O3 -flto=auto -pipe -fno-plt` for both sioyek and mupdf. Link: `-flto=auto` (via CXXFLAGS) plus `-Wl,-O2 -Wl,--as-needed` and `-fvisibility=hidden -fvisibility-inlines-hidden`, applied as `target_*_options(sioyek PRIVATE ...)` in `CMakeLists.txt` (not env `LDFLAGS`).
-- **Wayland:** runtime selection via `QT_QPA_PLATFORM=wayland` (or auto-detected when `qt6-wayland` is installed in a Wayland session).
+- **Wayland:** runtime selection via `QT_QPA_PLATFORM=wayland` (or auto-detected in a Wayland session). On this machine's Qt 6.11, the Wayland client QPA plugin is supplied by `qt6-base`.
 
 ### Required Arch packages
 
-`qt6-base qt6-svg qt6-declarative qt6-wayland harfbuzz sqlite zlib cmake gcc pkg-config`
+`qt6-base qt6-svg qt6-declarative harfbuzz sqlite zlib cmake gcc pkg-config`
 
 (Notably **not** installed: `qt6-speech` (dropped via `SIOYEK_NO_TTS`), `mupdf` (bundled and installed locally).)
 
@@ -111,12 +111,11 @@ MuPDF accepts `USE_SYSTEM_*` toggles to drop bundled thirdparty libs — see `mu
 
 ### Required system packages (Arch)
 
-- `qt6-base qt6-svg qt6-declarative qt6-speech qt6-wayland` — Qt 6 + Wayland QPA plugin
+- `qt6-base qt6-svg qt6-declarative` — Qt 6, including the Wayland client QPA plugin in `qt6-base`
 - `harfbuzz sqlite zlib`
-- `mupdf` (only if linking against system mupdf instead of the submodule)
 - Tools: `cmake make pkg-config gcc`
 
-`qt6-wayland` provides the `wayland` QPA plugin loaded at runtime; nothing in sioyek's build scripts has to be changed for Wayland.
+`qt6-speech` is not needed with `SIOYEK_NO_TTS=ON`, and MuPDF is built from the bundled submodule. Since Qt 6.10 on Arch, `qt6-wayland` contains Wayland compositor libraries and optional client plugins; it is not required for Sioyek's Wayland client. Nothing in Sioyek's build scripts has to be changed for Wayland.
 
 ### Forcing Wayland at runtime
 
@@ -126,7 +125,7 @@ Sioyek delegates platform selection to Qt. To force Wayland (and skip xcb entire
 QT_QPA_PLATFORM=wayland ./sioyek    # one-shot
 ```
 
-Or set it persistently in the desktop entry / shell env. If the desktop session is already Wayland and `qt6-wayland` is installed, Qt picks it automatically.
+Or set it persistently in the desktop entry / shell env. In a Wayland session, Qt can select the Wayland platform plugin from `qt6-base` automatically.
 
 **Gotchas on Wayland that are worth knowing when editing the code:**
 
