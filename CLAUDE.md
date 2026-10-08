@@ -18,7 +18,7 @@ Sioyek itself has **no direct X11 or Wayland code** — all display interaction 
 - **Network:** kept. `QLocalSocket`/`QLocalServer` (used by `RunGuard` for single-instance IPC) live in `Qt::Network` in Qt 6 — dropping the module would break multi-PDF window handoff. Outbound HTTP (paper download, JS extension API) is gated on user action; update check is config-off by default.
 - **Install layout:** Portable. Build artifacts and runtime assets all go under `~/.local/share/sioyek/`; a tiny wrapper script at `~/.local/bin/sioyek` exec's the binary; a hand-written `~/.local/share/applications/sioyek.desktop` handles desktop launcher integration. No `make install`, no `LINUX_STANDARD_PATHS`, no sudo. User config naturally goes to `~/.config/sioyek/`, user data to `~/.local/share/sioyek/`.
 - **Compiler flags:** `-march=znver4 -O3 -flto=auto -pipe -fno-plt` for both sioyek and mupdf. Link: `-flto=auto` (via CXXFLAGS) plus `-Wl,-O2 -Wl,--as-needed` and `-fvisibility=hidden -fvisibility-inlines-hidden`, applied as `target_*_options(sioyek PRIVATE ...)` in `CMakeLists.txt` (not env `LDFLAGS`).
-- **Wayland:** runtime selection via `QT_QPA_PLATFORM=wayland` (or auto-detected in a Wayland session). On this machine's Qt 6.11, the Wayland client QPA plugin is supplied by `qt6-base`.
+- **Wayland:** runtime selection via `QT_QPA_PLATFORM=wayland` (or auto-detected in a Wayland session). On this machine's Qt 6.12, the Wayland client QPA plugin is supplied by `qt6-base`.
 
 ### Required Arch packages
 
@@ -179,7 +179,7 @@ When `LINUX_STANDARD_PATHS` is defined (non-portable installs), config files liv
 
 ### Minimum Qt version
 
-The source uses `#if QT_VERSION >= QT_VERSION_CHECK(6, 6, 0)` guards in a few places (`main_widget.cpp`). README says 6.7/6.8; that's the working minimum. This machine builds against Arch's `qt6-base` (currently 6.11.x). Upstream moved the build files to **C++20** (`CMAKE_CXX_STANDARD 20`) as of Sept 2026.
+The source uses `#if QT_VERSION >= QT_VERSION_CHECK(6, 6, 0)` guards in a few places (`main_widget.cpp`). README says 6.7/6.8; that's the working minimum. This machine builds against Arch's `qt6-base` (currently 6.12.x; rebuild after every minor upgrade, see `UPDATING.md`). Upstream moved the build files to **C++20** (`CMAKE_CXX_STANDARD 20`) as of Sept 2026.
 
 ### Current submodule state of this checkout
 
