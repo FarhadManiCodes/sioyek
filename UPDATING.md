@@ -25,6 +25,17 @@ cp build-cmake/sioyek ~/.local/share/sioyek/sioyek
 The wrapper `~/.local/bin/sioyek` exec's `~/.local/share/sioyek/sioyek`, so the
 `cp` *is* the install. No `make install`, no sudo.
 
+**The launcher must be a wrapper script, never a symlink.** sioyek finds
+`shaders/` and `prefs.config` via `QCoreApplication::applicationDirPath()`, which
+since Qt 6.12 returns the *symlink's* directory: with a symlink in `~/.local/bin`
+every PDF renders blank (2026-10-08). `~/dotfiles/install.sh` writes the wrapper.
+
+**Rebuild after every `qt6-base` minor upgrade** (6.11 → 6.12, ...), even with
+no new commits. `config-drift` (run by `sysup`) warns when the binary's
+`qt_version_tag` no longer matches the installed Qt, and when the launcher is a
+symlink. Manual check:
+`readelf --dyn-syms -W ~/.local/share/sioyek/sioyek | grep -o 'qt_version_tag@Qt_[0-9.]*'; pacman -Q qt6-base`
+
 ## When do I actually need to recompile?
 
 Check what changed since the installed binary:
