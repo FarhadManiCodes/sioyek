@@ -176,6 +176,16 @@ find_package(ZLIB REQUIRED)
 find_package(HarfBuzz REQUIRED)
 find_package(SQLite3 REQUIRED)
 
+# Distributions ship HarfBuzz as a CMake config package that only exposes an
+# imported target; older Find modules only defined HARFBUZZ_LIBRARIES.
+if(TARGET harfbuzz::harfbuzz)
+  set(SIOYEK_HARFBUZZ_LIBS harfbuzz::harfbuzz)
+elseif(TARGET HarfBuzz::HarfBuzz)
+  set(SIOYEK_HARFBUZZ_LIBS HarfBuzz::HarfBuzz)
+else()
+  set(SIOYEK_HARFBUZZ_LIBS ${HARFBUZZ_LIBRARIES})
+endif()
+
 if((QT_VERSION_MAJOR GREATER 5))
   target_compile_definitions(sioyek PRIVATE
         SIOYEK_QT6
@@ -193,7 +203,8 @@ add_library(fzf STATIC
 
 target_link_libraries(sioyek PRIVATE
     ${CMAKE_DL_LIBS}
-    ${HARFBUZZ_LIBRARIES}
+    mupdf
+    ${SIOYEK_HARFBUZZ_LIBS}
     ZLIB::ZLIB
     fzf
     SQLite3::SQLite3
@@ -210,19 +221,33 @@ if(APPLE)
       -lz
   )
 else()
+  if(UNIX)
+    # The CMake build links the vendored mupdf produced by build_linux.sh.
+    # libmupdf.a is outside the default linker paths and depends on both the
+    # third-party and the threading archives.
+    target_link_directories(sioyek PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/mupdf/build/release
+    )
+    target_link_libraries(sioyek PRIVATE
+        mupdf-third
+        mupdf-threads
+    )
+  endif()
   string(REPLACE "-mno-direct-extern-access" "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
   # Must be target-scoped: directory-level add_*_options() only affect targets
   # created after the call, but qt_add_executable(sioyek) is defined far above.
   target_compile_options(sioyek PRIVATE -fvisibility=hidden -fvisibility-inlines-hidden)
   target_link_options(sioyek PRIVATE -Wl,-O2 -Wl,--as-needed)
-  target_link_libraries(sioyek PRIVATE
-      -L${CMAKE_CURRENT_SOURCE_DIR}/mupdf/build/release
-      -lmupdf
-      -lmupdf-third
-      -lmupdf-threads
-      -lharfbuzz
-      -lfreetype
-  )
+  # Personal: this mupdf is built with USE_SYSTEM_FREETYPE=yes / USE_SYSTEM_HARFBUZZ=yes,
+  # and libmupdf.a references FT_*/hb_* symbols, so freetype must follow it on the
+  # link line. (mupdf, harfbuzz and -L/mupdf-third/mupdf-threads now come from the
+  # upstream lines above.)
+  target_link_libraries(sioyek PRIVATE -lfreetype)
+  # Personal: upstream's target_link_directories() above makes CMake embed a build-tree
+  # RUNPATH ("<mupdf dir>:" with an empty trailing element = cwd). mupdf is static and Qt
+  # is in the system path, so no RUNPATH is needed; drop it so the copied binary can't
+  # pick up libraries from the current directory.
+  set_target_properties(sioyek PROPERTIES BUILD_WITH_INSTALL_RPATH ON INSTALL_RPATH "")
 endif()
 
 install(TARGETS sioyek
