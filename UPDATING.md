@@ -71,9 +71,15 @@ The persisted cache already has these; a fresh configure must re-pass them:
 ```bash
 cmake -B build-cmake -DCMAKE_BUILD_TYPE=Release \
       -DSIOYEK_NO_TTS=ON \
-      -DCMAKE_CXX_FLAGS="-march=znver4 -O3 -flto=auto -pipe -fno-plt"
+      -DCMAKE_CXX_FLAGS="-march=znver4 -O3 -flto=auto -pipe -fno-plt" \
+      -DCMAKE_C_FLAGS="-march=znver4 -O3 -flto=auto -pipe -fno-plt"
 ```
 
+- Pass **both** `CMAKE_CXX_FLAGS` and `CMAKE_C_FLAGS`: sioyek has 3 plain-C files
+  (`fzf/fzf.c`, `synctex_parser*.c`) that otherwise build without `-march=znver4`
+  (found 2026-11-16 when a from-scratch build following the old recipe did this).
+  Check: every sioyek unit in `build-cmake/compile_commands.json` should contain
+  `-march=znver4`.
 - `SIOYEK_NO_TTS=ON` → drops Qt TextToSpeech; no `qt6-speech` package needed.
   Set `OFF` (and `pacman -S qt6-speech`) if you ever want read-aloud back.
 - MuPDF (step above) must already be built before this works.

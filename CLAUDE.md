@@ -83,9 +83,12 @@ cd mupdf && make USE_SYSTEM_HARFBUZZ=yes -j$(nproc) && cd ..
 ```bash
 cmake -B build-cmake -DCMAKE_BUILD_TYPE=Release \
       -DSIOYEK_NO_TTS=ON \
-      -DCMAKE_CXX_FLAGS="-march=znver4 -O3 -flto=auto -pipe -fno-plt"
+      -DCMAKE_CXX_FLAGS="-march=znver4 -O3 -flto=auto -pipe -fno-plt" \
+      -DCMAKE_C_FLAGS="-march=znver4 -O3 -flto=auto -pipe -fno-plt"
 cmake --build build-cmake -j$(nproc)
 ```
+
+(Both `CMAKE_CXX_FLAGS` and `CMAKE_C_FLAGS` are needed — 3 plain-C files would otherwise miss `-march=znver4`.)
 
 Note: `CMakeLists.txt` has a `string(REPLACE "-mno-direct-extern-access" "" CMAKE_CXX_FLAGS ...)` on non-Apple Linux (an old Qt 6 LTO-interop workaround). It is currently a **no-op** — Qt 6 injects that flag through its imported-target interface, not `CMAKE_CXX_FLAGS`, so the flag still shows in every compile line (`grep -c mno-direct build-cmake/compile_commands.json`). Harmless: LTO builds work with it present. It still expects bundled mupdf at `mupdf/build/release/libmupdf.a` and friends, **so step 1 of the qmake recipe (`cd mupdf && make ...`) has to be run first** if `mupdf/build/` is empty (see submodule state below) — unless `CMakeLists.txt` is patched to use system mupdf.
 
